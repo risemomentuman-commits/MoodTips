@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "988485491350",
+    "project_id": "moodtips-f2f0b",
+    "storage_bucket": "moodtips-f2f0b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:988485491350:android:f1336133acaf4d783480b7",
+        "android_client_info": {
+          "package_name": "com.moodtips.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlAyHWaOTWar1DG4aRXY7ha4llKP2_AbA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

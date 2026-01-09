@@ -1,0 +1,49 @@
+name: moodtips
+description: "Application bien-être avec tips émotionnels"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  supabase_flutter: ^2.0.0
+  flutter_dotenv: ^5.1.0
+  just_audio: ^0.9.36        # ← Corrigé : 2 espaces au lieu de 4
+  audio_session: ^0.1.18
+  image_picker: ^1.0.4
+  fl_chart: ^0.68.0
+  flutter_tts: ^4.0.2    # Text-to-Speech
+  audioplayers: ^5.2.1 # Musique
+  firebase_core: ^3.6.0
+  flutter_local_notifications: ^17.0.0
+  timezone: ^0.9.2
+  permission_handler: ^11.0.1
+  url_launcher: ^6.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - .env
+    - assets/audio/relaxation.mp3
+    - assets/audio/meditation.mp3
+    - assets/audio/energetic.mp3
+    - assets/audio/nature_rain.mp3
+    - assets/audio/nature_waves.mp3
+    - assets/audio/rain.mp3
+    - assets/audio/ocean.mp3
+    - assets/audio/forest.mp3
+    - assets/audio/whitenoise.mp3
+    - assets/audio/piano.mp3
+
+    
