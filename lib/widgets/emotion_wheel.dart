@@ -396,29 +396,13 @@ class _EmotionWheelState extends State<EmotionWheel>
                 ],
               ),
               child: Center(
-                child: Container(
-                  width: 64,  // ✅ Plus grand
-                  height: 64,
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(  // ✅ Gradient pour plus de profondeur
-                      colors: [
-                        (AppColors.emotions[emotion.name.toLowerCase()] ?? AppColors.primary).withOpacity(0.3),
-                        (AppColors.emotions[emotion.name.toLowerCase()] ?? AppColors.primary).withOpacity(0.1),
-                      ],
+                child: Center(
+                  child: Text(
+                    emotion.emoji,  // ✅ Vrai emoji
+                    style: TextStyle(
+                      fontSize: 48,
+                      fontFamily: 'Noto Color Emoji',
                     ),
-                    shape: BoxShape.circle,
-                    boxShadow: [  // ✅ Ombre pour relief
-                      BoxShadow(
-                        color: (AppColors.emotions[emotion.name.toLowerCase()] ?? AppColors.primary).withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    _getEmotionIcon(emotion.name),
-                    size: 36,  // ✅ Plus grand
-                    color: AppColors.emotions[emotion.name.toLowerCase()] ?? AppColors.primary,
                   ),
                 ),
               ),

@@ -47,6 +47,40 @@
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
+  <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
+  
+  <script>
+    // Convertir les emojis en images après le chargement
+    window.addEventListener('load', function() {
+      twemoji.parse(document.body, {
+        folder: 'svg',
+        ext: '.svg'
+      });
+      
+      // Observer les changements pour les emojis dynamiques
+      const observer = new MutationObserver(function() {
+        twemoji.parse(document.body, {
+          folder: 'svg',
+          ext: '.svg'
+        });
+      });
+      
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    });
+  </script>
+  
+  <style>
+    /* Style pour les emojis Twemoji */
+    img.emoji {
+      height: 1em;
+      width: 1em;
+      margin: 0 0.05em 0 0.1em;
+      vertical-align: -0.1em;
+    }
+  </style>
 
   <title>moodtips</title>
   <link rel="manifest" href="manifest.json">
