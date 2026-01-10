@@ -510,21 +510,23 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(categoryColor),
-              SizedBox(height: 40),
-              _buildStepsProgress(progress),
-              SizedBox(height: 40),
-              _buildBreathingCircle(categoryColor),
-              SizedBox(height: 40),
-              _buildInstructionCard(currentStep, categoryColor),
-              Spacer(),
-              _buildTimer(),
-              SizedBox(height: 24),
-              _buildControls(categoryColor),
-              SizedBox(height: 24),
-            ],
+          child: SingleChildScrollView(  // ✅ AJOUT
+            child: Column(
+              children: [
+                _buildHeader(categoryColor),
+                SizedBox(height: 40),
+                _buildStepsProgress(progress),
+                SizedBox(height: 40),
+                _buildBreathingCircle(categoryColor),
+                SizedBox(height: 40),
+                _buildInstructionCard(currentStep, categoryColor),
+                SizedBox(height: 60),  // ✅ Remplacer Spacer()
+                _buildTimer(),
+                SizedBox(height: 24),
+                _buildControls(categoryColor),
+                SizedBox(height: 80),  // ✅ Espace en bas
+              ],
+            ),
           ),
         ),
       ),
