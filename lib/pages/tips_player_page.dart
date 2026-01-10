@@ -95,25 +95,14 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   void _initializeMusic() async {
     try {
       if (widget.tip.backgroundMusic != null && widget.tip.backgroundMusic!.isNotEmpty) {
+        final musicFile = '${widget.tip.backgroundMusic}.mp3';
+        
         _backgroundMusicPlayer = AudioPlayer();
         await _backgroundMusicPlayer!.setReleaseMode(ReleaseMode.loop);
         await _backgroundMusicPlayer!.setVolume(_musicVolume);
-        
-        final musicFile = 'audio/${widget.tip.backgroundMusic}.mp3';
-        await _backgroundMusicPlayer!.setSource(AssetSource(musicFile));
-        _backgroundMusicPlayer = AudioPreloader.getPlayer(musicFile);
-
-        if (_backgroundMusicPlayer == null) {
-        // Si pas préchargé, créer un nouveau player
-        print('⚠️ Musique non préchargée : $musicFile');
-        _backgroundMusicPlayer = AudioPlayer();
         await _backgroundMusicPlayer!.setSource(AssetSource('audio/$musicFile'));
-      }
-      
-      await _backgroundMusicPlayer!.setReleaseMode(ReleaseMode.loop);
-      await _backgroundMusicPlayer!.setVolume(_musicVolume);
         
-        print('🎵 Musique chargée : $musicFile');
+        print('🎵 Musique prête : $musicFile');
       }
     } catch (e) {
       print("❌ Erreur musique: $e");
@@ -157,12 +146,25 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
     }
   }
 
-  void _startExercise() {
+  void _startExercise() async {
     setState(() => _isPlaying = true);
     
-    _speakCurrentStep();
-    _backgroundMusicPlayer?.resume();
+    // ✅ Lancer la musique (play, pas resume)
+    if (_backgroundMusicPlayer != null) {
+      try {
+        await _backgroundMusicPlayer!.play(
+          _backgroundMusicPlayer!.source!,
+        );
+        print('🎵 Musique lancée');
+      } catch (e) {
+        print('❌ Erreur lecture musique: $e');
+      }
+    }
     
+    // Lancer la voix
+    _speakCurrentStep();
+    
+    // Démarrer le timer
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
