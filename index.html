@@ -50,24 +50,30 @@
   <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
   
   <script>
-    // Convertir les emojis en images après le chargement
-    window.addEventListener('load', function() {
-      twemoji.parse(document.body, {
-        folder: 'svg',
-        ext: '.svg'
-      });
-      
-      // Observer les changements pour les emojis dynamiques
-      const observer = new MutationObserver(function() {
+  // Fonction pour parser les emojis
+    function parseEmojis() {
+      if (typeof twemoji !== 'undefined') {
         twemoji.parse(document.body, {
           folder: 'svg',
-          ext: '.svg'
+          ext: '.svg',
+          base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'
         });
-      });
-      
+      }
+    }
+    
+    // Parser au chargement
+    window.addEventListener('load', parseEmojis);
+    
+    // Parser toutes les 500ms pour attraper les emojis Flutter
+    setInterval(parseEmojis, 500);
+    
+    // Observer les changements DOM
+    window.addEventListener('load', function() {
+      const observer = new MutationObserver(parseEmojis);
       observer.observe(document.body, {
         childList: true,
-        subtree: true
+        subtree: true,
+        characterData: true
       });
     });
   </script>
