@@ -162,6 +162,36 @@ class _EmotionWheelState extends State<EmotionWheel>
     _controller.dispose();
     super.dispose();
   }
+  IconData _getEmotionIcon(String emotionName) {
+    final icons = {
+      'heureux': Icons.sentiment_very_satisfied,
+      'joyeux': Icons.sentiment_very_satisfied,
+      'calme': Icons.spa,
+      'serein': Icons.self_improvement,
+      'énergique': Icons.bolt,
+      'motivé': Icons.rocket_launch,
+      'anxieux': Icons.psychology_outlined,
+      'inquiet': Icons.sentiment_neutral,
+      'triste': Icons.sentiment_dissatisfied,
+      'mélancolique': Icons.cloud,
+      'en colère': Icons.whatshot,
+      'irrité': Icons.warning_amber,
+      'fatigué': Icons.bedtime,
+      'épuisé': Icons.battery_0_bar,
+      'confus': Icons.help_outline,
+      'perdu': Icons.explore_off,
+      'reconnaissant': Icons.favorite,
+      'aimant': Icons.favorite_border,
+      'nostalgique': Icons.history,
+      'pensif': Icons.wb_cloudy,
+      'stressé': Icons.alarm_on,
+      'dépassé': Icons.trending_down,
+      'content': Icons.sentiment_satisfied,
+      'paisible': Icons.water,
+    };
+    
+    return icons[emotionName.toLowerCase()] ?? Icons.sentiment_neutral;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -361,12 +391,19 @@ class _EmotionWheelState extends State<EmotionWheel>
                 ],
               ),
               child: Center(
-                child: Text(
-                  emotion.emoji,
-                  style: TextStyle(
-                    fontSize: isSelected ? 36 : 28,
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: AppColors.emotions[emotion.name.toLowerCase()]?.withOpacity(0.2) ?? Colors.grey.withOpacity(0.2),
+                    shape: BoxShape.circle,
                   ),
-                ),
+                  child: Icon(
+                    _getEmotionIcon(emotion.name),
+                    size: 32,
+                    color: AppColors.emotions[emotion.name.toLowerCase()] ?? AppColors.primary,
+                  ),
+                )
               ),
             ),
           ),
