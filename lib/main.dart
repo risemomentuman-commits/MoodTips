@@ -7,6 +7,7 @@ import 'pages/mood_check_page.dart';
 import 'pages/onboarding_slides_page.dart';
 import 'services/supabase_service.dart';
 import 'services/notification_service.dart';
+import 'services/audio_preloader.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

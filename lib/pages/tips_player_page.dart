@@ -6,6 +6,7 @@ import '../models/tip.dart';
 import '../models/instruction_step.dart';
 import '../utils/app_colors.dart';
 import '../services/supabase_service.dart';
+import '../services/audio_preloader.dart';
 
 class TipsPlayerPage extends StatefulWidget {
   final Tip tip;
