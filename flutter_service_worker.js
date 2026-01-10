@@ -4,13 +4,13 @@ const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
 const RESOURCES = {"flutter.js": "4b2350e14c6650ba82871f60906437ea",
-"icons/Icon-512.png": "96e752610906ba2a93c65f8abe1645f1",
-"icons/Icon-maskable-512.png": "301a7604d45b3e739efc881eb04896ea",
+"icons/Icon-512.png": "6c33af9fd9e0ae63d5d8ae3502da1a67",
+"icons/Icon-maskable-512.png": "6cd401190b418a71ffa427f8029b09d3",
 "icons/Icon-192.png": "ac9a721a12bbc803b44f645561ecb1e1",
 "icons/Icon-maskable-192.png": "c457ef57daa1d16f64b27b786ec2ea3c",
 "manifest.json": "e073ae6996b936112ea66ebfbb29a9db",
-"index.html": "01cf934cc774774ec8cff21b0a7aba2d",
-"/": "01cf934cc774774ec8cff21b0a7aba2d",
+"index.html": "345b563386211df49c1cfb50eb0eb2f5",
+"/": "345b563386211df49c1cfb50eb0eb2f5",
 "assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8cb9b6ce",
 "assets/AssetManifest.bin.json": "3df90566ae20c5f1856e8b42210f384e",
 "assets/assets/audio/ocean.mp3": "e70497015784e7c27b379ce39143e814",
@@ -40,7 +40,7 @@ const RESOURCES = {"flutter.js": "4b2350e14c6650ba82871f60906437ea",
 "canvaskit/canvaskit.js.symbols": "efc2cd87d1ff6c586b7d4c7083063a40",
 "canvaskit/skwasm.js.symbols": "96263e00e3c9bd9cd878ead867c04f3c",
 "favicon.png": "5dcef449791fa27946b3d35ad8803796",
-"flutter_bootstrap.js": "d2863ec4a11ac22a941b958ffb00835d",
+"flutter_bootstrap.js": "96974803b6e815d344414c87e6e75a8b",
 "version.json": "fe528fe325ef445b3b74e5a0b8700405",
 "main.dart.js": "077af658c1ff0311a8dde7e8b0148adc"};
 // The application shell files that are downloaded before a service worker can
