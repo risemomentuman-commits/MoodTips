@@ -391,7 +391,7 @@ class _EmotionWheelState extends State<EmotionWheel>
                 ],
               ),
               child: Center(
-                Container(
+                child: Container( 
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
