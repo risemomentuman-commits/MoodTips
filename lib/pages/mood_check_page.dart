@@ -260,9 +260,9 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                             ),
                           ),
                         ),
-              _buildSleepLink(),
-          )
-          SizedBox(height: 120),
+                  _buildSleepLink(),
+                )
+              SizedBox(height: 120),
             ],
           ),
         ),
