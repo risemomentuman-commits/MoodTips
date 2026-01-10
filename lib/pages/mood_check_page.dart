@@ -88,6 +88,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
+          child: SingleChildScrollView(
           child: Column(
             children: [
               // Header avec Stats et Settings
@@ -176,7 +177,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
             SizedBox(height: 40),
 
             // ✅ NOUVELLE ROUE DES ÉMOTIONS (remplace GridView)
-            Expanded(
+
               child: FutureBuilder<List<Emotion>>(
                 future: _emotionsFuture,
                 builder: (context, snapshot) {
@@ -230,7 +231,6 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   );
                 },
               ),
-            ),
             
                               // ✅ BOUTON FEEDBACK
                         Container(
@@ -261,7 +261,8 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                           ),
                         ),
               _buildSleepLink(),
-
+          )
+          SizedBox(height: 120),
             ],
           ),
         ),

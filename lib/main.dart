@@ -14,7 +14,7 @@ void main() async {
   // Initialiser Supabase
   await Supabase.initialize(
     url: 'https://bfyehaltboxxsivqtfhq.supabase.co',
-    anonKey: 'sb_publishable_i756_vti1aFvEkGRwI-hhQ_ozG5Fuck',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmeWVoYWx0Ym94eHNpdnF0ZmhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4NjMzMzEsImV4cCI6MjA4MjQzOTMzMX0.bxiMKHrjRFcIfqcoE7oj6lTlFVjcs-FnP6Mq69eWmdc',
   );
 
   // Initialiser les notifications

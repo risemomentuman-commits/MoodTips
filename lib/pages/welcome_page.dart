@@ -6,16 +6,17 @@ class WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.primary.withOpacity(0.1),
-              AppColors.secondary.withOpacity(0.05),
-              Colors.white,
-            ],
+      body: SingleChildScrollView(  // ✅ AJOUT
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.primary.withOpacity(0.1),
+                AppColors.secondary.withOpacity(0.05),
+                Colors.white,
+              ],
           ),
         ),
         child: SafeArea(
@@ -136,6 +137,7 @@ class WelcomePage extends StatelessWidget {
         ),
       ),
     );
+    )
   }
 
   Widget _buildFeature({
