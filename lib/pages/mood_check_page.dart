@@ -176,8 +176,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
 
             SizedBox(height: 40),
 
-            // ✅ NOUVELLE ROUE DES ÉMOTIONS (remplace GridView)
-
+                  // ✅ NOUVELLE ROUE DES ÉMOTIONS (remplace GridView)
               child: FutureBuilder<List<Emotion>>(
                 future: _emotionsFuture,
                 builder: (context, snapshot) {
