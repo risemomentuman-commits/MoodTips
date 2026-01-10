@@ -164,33 +164,38 @@ class _EmotionWheelState extends State<EmotionWheel>
   }
   IconData _getEmotionIcon(String emotionName) {
     final icons = {
-      'heureux': Icons.sentiment_very_satisfied,
-      'joyeux': Icons.sentiment_very_satisfied,
-      'calme': Icons.spa,
-      'serein': Icons.self_improvement,
-      'énergique': Icons.bolt,
-      'motivé': Icons.rocket_launch,
-      'anxieux': Icons.psychology_outlined,
-      'inquiet': Icons.sentiment_neutral,
-      'triste': Icons.sentiment_dissatisfied,
-      'mélancolique': Icons.cloud,
-      'en colère': Icons.whatshot,
-      'irrité': Icons.warning_amber,
-      'fatigué': Icons.bedtime,
-      'épuisé': Icons.battery_0_bar,
-      'confus': Icons.help_outline,
-      'perdu': Icons.explore_off,
-      'reconnaissant': Icons.favorite,
-      'aimant': Icons.favorite_border,
-      'nostalgique': Icons.history,
-      'pensif': Icons.wb_cloudy,
-      'stressé': Icons.alarm_on,
-      'dépassé': Icons.trending_down,
-      'content': Icons.sentiment_satisfied,
-      'paisible': Icons.water,
+      // Positif
+      'heureux': Icons.sentiment_very_satisfied_rounded,
+      'joyeux': Icons.emoji_emotions_rounded,
+      'calme': Icons.spa_rounded,
+      'serein': Icons.self_improvement_rounded,
+      'énergique': Icons.flash_on_rounded,
+      'motivé': Icons.local_fire_department_rounded,
+      'reconnaissant': Icons.favorite_rounded,
+      'aimant': Icons.volunteer_activism_rounded,
+      'content': Icons.sentiment_satisfied_alt_rounded,
+      'paisible': Icons.water_drop_rounded,
+      
+      // Négatif
+      'anxieux': Icons.psychology_alt_rounded,
+      'inquiet': Icons.sentiment_dissatisfied_rounded,
+      'triste': Icons.sentiment_very_dissatisfied_rounded,
+      'mélancolique': Icons.cloud_rounded,
+      'en colère': Icons.local_fire_department_rounded,
+      'irrité': Icons.whatshot_rounded,
+      'fatigué': Icons.nights_stay_rounded,
+      'épuisé': Icons.battery_0_bar_rounded,
+      'stressé': Icons.warning_amber_rounded,
+      'dépassé': Icons.trending_down_rounded,
+      
+      // Neutre
+      'confus': Icons.help_outline_rounded,
+      'perdu': Icons.explore_off_rounded,
+      'nostalgique': Icons.schedule_rounded,
+      'pensif': Icons.cloud_queue_rounded,
     };
     
-    return icons[emotionName.toLowerCase()] ?? Icons.sentiment_neutral;
+    return icons[emotionName.toLowerCase()] ?? Icons.sentiment_neutral_rounded;
   }
 
   @override
@@ -391,19 +396,31 @@ class _EmotionWheelState extends State<EmotionWheel>
                 ],
               ),
               child: Center(
-                child: Container( 
-                  width: 56,
-                  height: 56,
+                child: Container(
+                  width: 64,  // ✅ Plus grand
+                  height: 64,
                   decoration: BoxDecoration(
-                    color: AppColors.emotions[emotion.name.toLowerCase()]?.withOpacity(0.2) ?? Colors.grey.withOpacity(0.2),
+                    gradient: RadialGradient(  // ✅ Gradient pour plus de profondeur
+                      colors: [
+                        (AppColors.emotions[emotion.name.toLowerCase()] ?? AppColors.primary).withOpacity(0.3),
+                        (AppColors.emotions[emotion.name.toLowerCase()] ?? AppColors.primary).withOpacity(0.1),
+                      ],
+                    ),
                     shape: BoxShape.circle,
+                    boxShadow: [  // ✅ Ombre pour relief
+                      BoxShadow(
+                        color: (AppColors.emotions[emotion.name.toLowerCase()] ?? AppColors.primary).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Icon(
                     _getEmotionIcon(emotion.name),
-                    size: 32,
+                    size: 36,  // ✅ Plus grand
                     color: AppColors.emotions[emotion.name.toLowerCase()] ?? AppColors.primary,
                   ),
-                )
+                ),
               ),
             ),
           ),
