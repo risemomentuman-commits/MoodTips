@@ -19,6 +19,7 @@ void main() async {
 
   // Initialiser les notifications
   await NotificationService.initialize();
+  AudioPreloader.preloadAudio();
 
   runApp(MyApp());
 }
