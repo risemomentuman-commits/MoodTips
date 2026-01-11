@@ -18,13 +18,27 @@ class TtsService {
 
   static Future<void> speak(String text) async {
     if (kIsWeb) {
-      // Web Speech API pour le web
       try {
         final utterance = html.SpeechSynthesisUtterance(text);
         utterance.lang = 'fr-FR';
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
+        utterance.rate = 0.85;    // ✅ Plus lent (était 0.9)
+        utterance.pitch = 1.1;    // ✅ Plus aigu = plus doux (était 1.0)
+        utterance.volume = 0.9;   // ✅ Légèrement moins fort
+        
+        // ✅ Essayer de sélectionner une voix féminine
+        final voices = html.window.speechSynthesis?.getVoices();
+        if (voices != null && voices.isNotEmpty) {
+          // Chercher une voix française féminine
+          final frenchVoice = voices.firstWhere(
+            (voice) => voice.lang.startsWith('fr') && 
+                      (voice.name.toLowerCase().contains('female') ||
+                        voice.name.toLowerCase().contains('femme') ||
+                        voice.name.toLowerCase().contains('google français')),
+            orElse: () => voices.first,
+          );
+          utterance.voice = frenchVoice;
+          print('🗣️ Voix sélectionnée: ${frenchVoice.name}');
+        }
         
         html.window.speechSynthesis?.speak(utterance);
         _isSpeaking = true;
