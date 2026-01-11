@@ -21,23 +21,23 @@ class TtsService {
       try {
         final utterance = html.SpeechSynthesisUtterance(text);
         utterance.lang = 'fr-FR';
-        utterance.rate = 0.85;    // ✅ Plus lent (était 0.9)
-        utterance.pitch = 1.1;    // ✅ Plus aigu = plus doux (était 1.0)
-        utterance.volume = 0.9;   // ✅ Légèrement moins fort
+        utterance.rate = 0.85;    // Plus lent = plus doux
+        utterance.pitch = 1.15;   // Plus aigu = plus doux
+        utterance.volume = 0.85;  // Moins fort
         
-        // ✅ Essayer de sélectionner une voix féminine
+        // Essayer de sélectionner une voix féminine française
         final voices = html.window.speechSynthesis?.getVoices();
         if (voices != null && voices.isNotEmpty) {
-          // Chercher une voix française féminine
           final frenchVoice = voices.firstWhere(
-            (voice) => voice.lang.startsWith('fr') && 
-                      (voice.name.toLowerCase().contains('female') ||
-                        voice.name.toLowerCase().contains('femme') ||
-                        voice.name.toLowerCase().contains('google français')),
+            (voice) => 
+              (voice.lang?.startsWith('fr') ?? false) && 
+              ((voice.name?.toLowerCase().contains('female') ?? false) ||
+              (voice.name?.toLowerCase().contains('femme') ?? false) ||
+              (voice.name?.toLowerCase().contains('google') ?? false)),
             orElse: () => voices.first,
           );
           utterance.voice = frenchVoice;
-          print('🗣️ Voix sélectionnée: ${frenchVoice.name}');
+          print('🗣️ Voix: ${frenchVoice.name}');
         }
         
         html.window.speechSynthesis?.speak(utterance);
@@ -47,12 +47,12 @@ class TtsService {
           _isSpeaking = false;
         });
         
-        print('🗣️ Web Speech: $text');
+        print('🗣️ TTS: $text');
       } catch (e) {
-        print('❌ Erreur Web Speech: $e');
+        print('❌ Erreur TTS: $e');
       }
     } else {
-      // Mobile (Android/iOS)
+      // Mobile
       await _flutterTts?.speak(text);
       _isSpeaking = true;
     }
