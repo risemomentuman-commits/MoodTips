@@ -126,16 +126,10 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   }
 
   Future<void> _speakCurrentStep() async {
-    if (_isSpeaking) {
-      await _flutterTts.stop();
-      setState(() => _isSpeaking = false);
-    } else {
-      final step = _steps[_currentStepIndex];
-      String textToSpeak = "${step.title}. ${step.description}";
-      
-      setState(() => _isSpeaking = true);
-      await _flutterTts.speak(textToSpeak);
-    }
+    final step = _steps[_currentStepIndex];
+    String textToSpeak = "${step.title}. ${step.description}";
+    await TtsService.speak(textToSpeak);
+    print('🗣️ Voix lancée: ${step.title}');
   }
 
   void _togglePlayPause() {
@@ -146,10 +140,16 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
     }
   }
 
-  void _startExercise() async {
+ void _startExercise() async {
     setState(() => _isPlaying = true);
     
-    // ✅ Lancer la musique (play, pas resume)
+    // ✅ Lancer la voix EN PREMIER (await pour attendre)
+    await Future.delayed(Duration(milliseconds: 500));
+    final step = _steps[_currentStepIndex];
+    String textToSpeak = "${step.title}. ${step.description}";
+    await TtsService.speak(textToSpeak);
+    
+    // Lancer la musique
     if (_backgroundMusicPlayer != null) {
       try {
         await _backgroundMusicPlayer!.play(
@@ -859,9 +859,11 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
       if (_musicVolume > 0) {
         _musicVolume = 0;
         _backgroundMusicPlayer?.setVolume(0);
+        _pauseExercise();
       } else {
         _musicVolume = 0.3;
         _backgroundMusicPlayer?.setVolume(0.3);
+        _startExercise();
       }
     });
   }
