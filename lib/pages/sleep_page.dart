@@ -99,32 +99,54 @@ class _SleepPageState extends State<SleepPage> {
       );
     }
   }
-
-  void _startSleepTimer() {
-    _sleepTimer?.cancel();
-    _remainingSeconds = _selectedTimer * 60;
-    
-    _sleepTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+  Future<void> _stopMusic() async {
+    try {
+      _sleepTimer?.cancel();  // ✅ Bon nom
+      
+      if (_currentSound != null) {
+        await _audioPlayer.setVolume(0);
+        await Future.delayed(Duration(milliseconds: 500));
+        await _audioPlayer.stop();
+        print('🛑 Musique arrêtée proprement');
+      }
+      
       if (mounted) {
         setState(() {
-          if (_remainingSeconds > 0) {
-            _remainingSeconds--;
-            
-            // Fade out progressif dans les 30 dernières secondes
-            if (_remainingSeconds <= 30) {
-              final volume = _remainingSeconds / 30 * 0.7;
-              _audioPlayer.setVolume(volume);
-            }
-          } else {
-            // Timer terminé
-            _audioPlayer.stop();
-            _sleepTimer?.cancel();
-            _isPlaying = false;
-            _currentSound = null;
-            _remainingSeconds = 0;
-          }
+          _isPlaying = false;
+          _currentSound = null;
+          _remainingSeconds = _selectedTimer * 60;  // ✅ Bon nom
         });
       }
+    } catch (e) {
+      print('❌ Erreur arrêt musique: $e');
+    }
+  }
+
+  void _startSleepTimer() {
+    _sleepTimer?.cancel();  // ✅ Bon nom
+    _remainingSeconds = _selectedTimer * 60;  // ✅ Bon nom
+    
+    _sleepTimer = Timer.periodic(Duration(seconds: 1), (timer) async {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
+      setState(() {
+        if (_remainingSeconds > 0) {
+          _remainingSeconds--;
+          
+          // Fade-out dans les 30 dernières secondes
+          if (_remainingSeconds <= 30 && _remainingSeconds > 0) {
+            final fadeVolume = (_remainingSeconds / 30) * 0.7;
+            _audioPlayer.setVolume(fadeVolume);
+          }
+        } else {
+          // Timer terminé
+          _stopMusic();
+          timer.cancel();
+        }
+      });
     });
   }
 
@@ -136,8 +158,9 @@ class _SleepPageState extends State<SleepPage> {
 
   @override
   void dispose() {
+    _sleepTimer?.cancel();  // ✅ Bon nom
+    _audioPlayer.stop();
     _audioPlayer.dispose();
-    _sleepTimer?.cancel();
     super.dispose();
   }
 
@@ -311,11 +334,12 @@ class _SleepPageState extends State<SleepPage> {
                                 ),
                                 
                                 // Indicateur play/pause
-                                Icon(
-                                  isPlaying ? Icons.pause_circle : Icons.play_circle,
-                                  color: Colors.white,
-                                  size: 32,
-                                ),
+                                IconButton(  // ✅ IconButton, pas Icon
+                                  icon: Icon(Icons.stop),
+                                  onPressed: () async {
+                                    await _stopMusic();
+                                  },
+                                )
                               ],
                             ),
                           ),
