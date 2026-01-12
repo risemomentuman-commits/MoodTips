@@ -115,7 +115,69 @@ class MyApp extends StatelessWidget {
       ),
       
       routes: AppRoutes.getRoutes(),
+      
+      // ✅ GESTION DES ROUTES DYNAMIQUES (redirections email, etc.)
+      onGenerateRoute: (settings) {
+        // Gérer la redirection après confirmation email
+        if (settings.name == '/welcome' || settings.name == '/auth/callback') {
+          return MaterialPageRoute(
+            builder: (_) => FutureBuilder<bool>(
+              future: _checkAuthAndRedirect(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.done) {
+                  if (snapshot.data == true) {
+                    // Utilisateur authentifié → Onboarding
+                    return OnboardingSlidesPage();
+                  } else {
+                    // Pas authentifié → Login avec message de succès
+                    return AuthPage(
+                      message: 'Email confirmé ! Connecte-toi maintenant 🎉',
+                      initialIsLogin: true,
+                    );
+                  }
+                }
+                // Loading pendant la vérification
+                return Scaffold(
+                  backgroundColor: AppColors.backgroundPrimary,
+                  body: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
+                        SizedBox(height: 20),
+                        Text(
+                          'Vérification...',
+                          style: TextStyle(
+                            color: AppColors.textMedium,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        }
+        
+        // Routes non trouvées → Page d'accueil
+        return null;
+      },
     );
+  }
+  
+  // ✅ FONCTION POUR VÉRIFIER L'AUTHENTIFICATION
+  Future<bool> _checkAuthAndRedirect() async {
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      return session != null;
+    } catch (e) {
+      print('Erreur _checkAuthAndRedirect: $e');
+      return false;
+    }
   }
   
   // ✅ FONCTION POUR DÉTERMINER LA DESTINATION DE DÉPART
