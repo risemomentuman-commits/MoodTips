@@ -4,6 +4,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:math';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
@@ -174,5 +175,16 @@ class NotificationService {
   }) async {
     // Personnaliser les heures si l'utilisateur veut
     await scheduleDailyNotifications();
+  }
+  // ✅ AJOUT de la méthode manquante
+  static Future<void> cancelAllNotifications() async {
+    if (kIsWeb) return;
+    
+    try {
+      await _notifications.cancelAll();
+      print('Toutes les notifications annulées');
+    } catch (e) {
+      print('Erreur cancelAllNotifications: $e');
+    }
   }
 }

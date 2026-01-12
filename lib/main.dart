@@ -8,9 +8,14 @@ import 'pages/onboarding_slides_page.dart';
 import 'services/supabase_service.dart';
 import 'services/notification_service.dart';
 import 'services/audio_preloader.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb) {
+    tz.initializeTimeZones();
+  }
 
   // Initialiser Supabase
   await Supabase.initialize(

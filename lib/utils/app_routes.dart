@@ -5,7 +5,7 @@ import '../pages/welcome_page.dart';
 import '../pages/onboarding_slides_page.dart';
 import '../pages/onboarding_objectifs_page.dart';
 import '../pages/onboarding_preferences_page.dart';
-import '../pages/onboarding_consent_page.dart';
+import '../pages/consent_page.dart';            
 import '../pages/mood_check_page.dart';
 import '../pages/dashboard_page.dart';
 import '../pages/tips_list_page.dart';
@@ -14,10 +14,10 @@ import '../pages/tips_detail_page.dart';
 import '../pages/tips_player_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/profile_page.dart';
-import '../pages/notifications_page.dart';
 import '../pages/privacy_page.dart';
 import '../pages/context_page.dart';
 import '../pages/sleep_page.dart';
+import '../pages/notifications_settings_page.dart';
 
 class AppRoutes {
   static const String auth = '/auth';
@@ -52,7 +52,8 @@ class AppRoutes {
       onboardingSlides: (context) => OnboardingSlidesPage(),
       onboardingObjectifs: (context) => OnboardingObjectifsPage(),
       onboardingPreferences: (context) => OnboardingPreferencesPage(),
-      onboardingConsent: (context) => OnboardingConsentPage(),
+      onboardingConsent: (context) => ConsentPage(),
+      notifications: (context) => NotificationsSettingsPage(),
       moodCheck: (context) => MoodCheckPage(),
       dashboard: (context) => DashboardPage(),
       tipsList: (context) => TipsListPage(),
@@ -127,7 +128,7 @@ class AppRoutes {
       },
       settings: (context) => SettingsPage(),
       profile: (context) => ProfilePage(),
-      notifications: (context) => NotificationsPage(),
+      notifications: (context) => NotificationsSettingsPage(),
       privacy: (context) => PrivacyPage(),
     };
   }
