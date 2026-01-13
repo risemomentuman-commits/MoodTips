@@ -137,8 +137,33 @@ class MyApp extends StatelessWidget {
                   final email = data['email'] as String?;
                   
                   if (isAuthenticated) {
-                    // Utilisateur authentifié → Onboarding
-                    return OnboardingSlidesPage();
+                  // Utilisateur authentifié → Vérifier onboarding
+                  final userId = Supabase.instance.client.auth.currentUser?.id;
+                  if (userId != null) {
+                    // Vérifier si onboarding complété
+                    return FutureBuilder(
+                      future: Supabase.instance.client
+                        .from('profiles')
+                        .select('onboarding_completed')
+                        .eq('id', userId)
+                        .maybeSingle(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.done) {
+                          final onboardingCompleted = snapshot.data?['onboarding_completed'] ?? false;
+                          if (onboardingCompleted) {
+                            return MoodCheckPage();
+                          } else {
+                            return OnboardingSlidesPage();
+                          }
+                        }
+                        return Scaffold(
+                          backgroundColor: AppColors.backgroundPrimary,
+                          body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                        );
+                      },
+                    );
+                  }
+  return OnboardingSlidesPage();
                   } else {
                     // Pas authentifié → Login avec message de succès et email pré-rempli
                     return AuthPage(

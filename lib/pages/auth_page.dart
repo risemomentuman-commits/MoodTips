@@ -194,7 +194,27 @@ class _AuthPageState extends State<AuthPage> {
 
       if (!mounted) return;
 
-      Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
+      // Vérifier si onboarding déjà complété
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId != null) {
+        final profile = await Supabase.instance.client
+          .from('profiles')
+          .select('onboarding_completed')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        final onboardingCompleted = profile?['onboarding_completed'] ?? false;
+        
+        if (!mounted) return;
+        
+        if (onboardingCompleted) {
+          Navigator.pushReplacementNamed(context, AppRoutes.moodCheck);
+        } else {
+          Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
+        }
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
+      }
     } on AuthException catch (e) {
       if (!mounted) return;
       
