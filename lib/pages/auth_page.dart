@@ -208,7 +208,7 @@ class _AuthPageState extends State<AuthPage> {
         if (!mounted) return;
         
         if (onboardingCompleted) {
-          Navigator.pushReplacementNamed(context, AppRoutes.moodCheck);
+          Navigator.pushReplacementNamed(context, AppRoutes.welcome);
         } else {
           Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
         }
