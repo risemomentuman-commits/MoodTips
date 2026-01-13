@@ -126,43 +126,55 @@ class MyApp extends StatelessWidget {
       // ✅ GESTION DES ROUTES DYNAMIQUES (redirections email, etc.)
       onGenerateRoute: (settings) {
         // Gérer la redirection après confirmation email
-        if (settings.name == '/welcome' || settings.name == '/auth/callback') {
+        if (settings.name == '/welcome' || settings.name == '/auth/callback' || settings.name == '/email-confirmed') {
           return MaterialPageRoute(
-            builder: (_) => FutureBuilder<Map<String, dynamic>>(
-              future: _checkAuthAndGetEmail(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.done) {
-                  final data = snapshot.data ?? {'isAuth': false, 'email': null};
-                  final isAuthenticated = data['isAuth'] as bool;
-                  final email = data['email'] as String?;
-                  
-                  if (isAuthenticated) {
-                  // Utilisateur authentifié → Vérifier onboarding
-                  final userId = Supabase.instance.client.auth.currentUser?.id;
-                  if (userId != null) {
-                    // Vérifier si onboarding complété
-                    return FutureBuilder(
-                      future: Supabase.instance.client
-                        .from('profiles')
-                        .select('onboarding_completed')
-                        .eq('id', userId)
-                        .maybeSingle(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.done) {
-                          final onboardingCompleted = snapshot.data?['onboarding_completed'] ?? false;
-                          if (onboardingCompleted) {
-                            return MoodCheckPage();
-                          } else {
-                            return OnboardingSlidesPage();
-                          }
-                        }
-                        return Scaffold(
-                          backgroundColor: AppColors.backgroundPrimary,
-                          body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                        );
-                      },
-                    );
-                  }
+            builder: (_) => Scaffold(
+              backgroundColor: AppColors.backgroundPrimary,
+              body: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        size: 80,
+                        color: AppColors.primary,
+                      ),
+                      SizedBox(height: 24),
+                      Text(
+                        'Email confirmé ! ✅',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Tu peux maintenant fermer cette page et te connecter dans l\'onglet précédent.',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppColors.textMedium,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 32),
+                      ElevatedButton(
+                        onPressed: () {
+                          // Fermer la fenêtre (fonctionne seulement si ouvert via window.open)
+                          Navigator.pop(context);
+                        },
+                        child: Text('Fermer cette page'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
   return OnboardingSlidesPage();
                   } else {
                     // Pas authentifié → Login avec message de succès et email pré-rempli
