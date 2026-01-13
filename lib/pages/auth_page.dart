@@ -11,7 +11,7 @@ class AuthPage extends StatefulWidget {
   const AuthPage({
     Key? key,
     this.message,
-    this.initialIsLogin = false,
+    this.initialIsLogin = true,
     this.prefillEmail,
   }) : super(key: key);
 
