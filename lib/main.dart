@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:timezone/data/latest.dart' as tz;
 import 'utils/app_routes.dart';
 import 'utils/app_colors.dart';
 import 'pages/auth_page.dart';
@@ -8,20 +10,20 @@ import 'pages/onboarding_slides_page.dart';
 import 'services/supabase_service.dart';
 import 'services/notification_service.dart';
 import 'services/audio_preloader.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (!kIsWeb) {
-    tz.initializeTimeZones();
-  }
 
   // Initialiser Supabase
   await Supabase.initialize(
     url: 'https://bfyehaltboxxsivqtfhq.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmeWVoYWx0Ym94eHNpdnF0ZmhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4NjMzMzEsImV4cCI6MjA4MjQzOTMzMX0.bxiMKHrjRFcIfqcoE7oj6lTlFVjcs-FnP6Mq69eWmdc',
   );
+
+  // Initialiser timezone (seulement si pas web)
+  if (!kIsWeb) {
+    tz.initializeTimeZones();
+  }
 
   // Initialiser les notifications
   await NotificationService.initialize();
@@ -126,18 +128,23 @@ class MyApp extends StatelessWidget {
         // Gérer la redirection après confirmation email
         if (settings.name == '/welcome' || settings.name == '/auth/callback') {
           return MaterialPageRoute(
-            builder: (_) => FutureBuilder<bool>(
-              future: _checkAuthAndRedirect(),
+            builder: (_) => FutureBuilder<Map<String, dynamic>>(
+              future: _checkAuthAndGetEmail(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.done) {
-                  if (snapshot.data == true) {
+                  final data = snapshot.data ?? {'isAuth': false, 'email': null};
+                  final isAuthenticated = data['isAuth'] as bool;
+                  final email = data['email'] as String?;
+                  
+                  if (isAuthenticated) {
                     // Utilisateur authentifié → Onboarding
                     return OnboardingSlidesPage();
                   } else {
-                    // Pas authentifié → Login avec message de succès
+                    // Pas authentifié → Login avec message de succès et email pré-rempli
                     return AuthPage(
                       message: 'Email confirmé ! Connecte-toi maintenant 🎉',
                       initialIsLogin: true,
+                      prefillEmail: email,
                     );
                   }
                 }
@@ -174,14 +181,22 @@ class MyApp extends StatelessWidget {
     );
   }
   
-  // ✅ FONCTION POUR VÉRIFIER L'AUTHENTIFICATION
-  Future<bool> _checkAuthAndRedirect() async {
+  // ✅ FONCTION POUR VÉRIFIER L'AUTHENTIFICATION ET RÉCUPÉRER L'EMAIL
+  Future<Map<String, dynamic>> _checkAuthAndGetEmail() async {
     try {
       final session = Supabase.instance.client.auth.currentSession;
-      return session != null;
+      final user = Supabase.instance.client.auth.currentUser;
+      
+      return {
+        'isAuth': session != null,
+        'email': user?.email,
+      };
     } catch (e) {
-      print('Erreur _checkAuthAndRedirect: $e');
-      return false;
+      print('Erreur _checkAuthAndGetEmail: $e');
+      return {
+        'isAuth': false,
+        'email': null,
+      };
     }
   }
   

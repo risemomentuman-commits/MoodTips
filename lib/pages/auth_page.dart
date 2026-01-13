@@ -6,11 +6,13 @@ import '../utils/app_routes.dart';
 class AuthPage extends StatefulWidget {
   final String? message;
   final bool initialIsLogin;
+  final String? prefillEmail;
   
   const AuthPage({
     Key? key,
     this.message,
     this.initialIsLogin = false,
+    this.prefillEmail,
   }) : super(key: key);
 
   @override
@@ -30,6 +32,11 @@ class _AuthPageState extends State<AuthPage> {
   void initState() {
     super.initState();
     _isLogin = widget.initialIsLogin;
+    
+    // Pré-remplir l'email si fourni
+    if (widget.prefillEmail != null && widget.prefillEmail!.isNotEmpty) {
+      _emailController.text = widget.prefillEmail!;
+    }
     
     // Afficher le message si présent
     if (widget.message != null) {
