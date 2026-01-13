@@ -10,6 +10,7 @@ import 'pages/onboarding_slides_page.dart';
 import 'services/supabase_service.dart';
 import 'services/notification_service.dart';
 import 'services/audio_preloader.dart';
+import 'pages/welcome_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -116,7 +117,7 @@ class MyApp extends StatelessWidget {
             case AppStartDestination.onboarding:
               return OnboardingSlidesPage();
             case AppStartDestination.home:
-              return MoodCheckPage();
+              return WelcomePage();
           }
         },
       ),

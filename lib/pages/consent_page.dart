@@ -5,6 +5,7 @@ import '../utils/app_colors.dart';
 import '../utils/app_routes.dart';
 import '../services/notification_service.dart';
 import '../services/supabase_service.dart';
+import 'welcome_page.dart';
 
 class ConsentPage extends StatefulWidget {
   const ConsentPage({Key? key}) : super(key: key);
@@ -360,7 +361,7 @@ class _ConsentPageState extends State<ConsentPage> {
       if (!mounted) return;
 
       // 6. Navigation vers la page principale
-      Navigator.pushReplacementNamed(context, AppRoutes.moodCheck);
+      Navigator.pushReplacementNamed(context, AppRoutes.welcome);
 
       // 7. Message de bienvenue
       await Future.delayed(Duration(milliseconds: 500));
