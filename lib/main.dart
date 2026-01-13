@@ -125,7 +125,6 @@ class MyApp extends StatelessWidget {
       
       // ✅ GESTION DES ROUTES DYNAMIQUES (redirections email, etc.)
       onGenerateRoute: (settings) {
-        // Gérer la redirection après confirmation email
         if (settings.name == '/welcome' || settings.name == '/auth/callback' || settings.name == '/email-confirmed') {
           return MaterialPageRoute(
             builder: (_) => Scaffold(
@@ -136,37 +135,18 @@ class MyApp extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 80,
-                        color: AppColors.primary,
-                      ),
+                      Icon(Icons.check_circle, size: 80, color: AppColors.primary),
                       SizedBox(height: 24),
                       Text(
                         'Email confirmé ! ✅',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
-                        ),
+                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textDark),
                         textAlign: TextAlign.center,
                       ),
                       SizedBox(height: 16),
                       Text(
-                        'Tu peux maintenant fermer cette page et te connecter dans l\'onglet précédent.',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: AppColors.textMedium,
-                        ),
+                        'Tu peux maintenant fermer cette page et te connecter.',
+                        style: TextStyle(fontSize: 16, color: AppColors.textMedium),
                         textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 32),
-                      ElevatedButton(
-                        onPressed: () {
-                          // Fermer la fenêtre (fonctionne seulement si ouvert via window.open)
-                          Navigator.pop(context);
-                        },
-                        child: Text('Fermer cette page'),
                       ),
                     ],
                   ),
@@ -175,66 +155,9 @@ class MyApp extends StatelessWidget {
             ),
           );
         }
-  return OnboardingSlidesPage();
-                  } else {
-                    // Pas authentifié → Login avec message de succès et email pré-rempli
-                    return AuthPage(
-                      message: 'Email confirmé ! Connecte-toi maintenant 🎉',
-                      initialIsLogin: true,
-                      prefillEmail: email,
-                    );
-                  }
-                }
-                // Loading pendant la vérification
-                return Scaffold(
-                  backgroundColor: AppColors.backgroundPrimary,
-                  body: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          color: AppColors.primary,
-                        ),
-                        SizedBox(height: 20),
-                        Text(
-                          'Vérification...',
-                          style: TextStyle(
-                            color: AppColors.textMedium,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          );
-        }
-        
-        // Routes non trouvées → Page d'accueil
         return null;
       },
     );
-  }
-  
-  // ✅ FONCTION POUR VÉRIFIER L'AUTHENTIFICATION ET RÉCUPÉRER L'EMAIL
-  Future<Map<String, dynamic>> _checkAuthAndGetEmail() async {
-    try {
-      final session = Supabase.instance.client.auth.currentSession;
-      final user = Supabase.instance.client.auth.currentUser;
-      
-      return {
-        'isAuth': session != null,
-        'email': user?.email,
-      };
-    } catch (e) {
-      print('Erreur _checkAuthAndGetEmail: $e');
-      return {
-        'isAuth': false,
-        'email': null,
-      };
-    }
   }
   
   // ✅ FONCTION POUR DÉTERMINER LA DESTINATION DE DÉPART
