@@ -231,14 +231,14 @@ class _ConsentPageState extends State<ConsentPage> {
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.error.withOpacity(0.1),
+                          color: AppColors.primary.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           requiredLabel,
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.error,
+                            color: AppColors.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -251,7 +251,7 @@ class _ConsentPageState extends State<ConsentPage> {
                 scale: 1.2,
                 child: Switch(
                   value: value,
-                  onChanged: isRequired ? null : onChanged,
+                  onChanged: onChanged,
                   activeColor: AppColors.primary,
                 ),
               ),
@@ -299,10 +299,27 @@ class _ConsentPageState extends State<ConsentPage> {
         }
       }
 
-      // 2. Mettre à jour le profil avec les consentements
+      // 2. Récupérer l'ID utilisateur
       final userId = Supabase.instance.client.auth.currentUser?.id;
       
-      if (userId != null) {
+      if (userId == null) {
+        throw Exception('Utilisateur non connecté');
+      }
+
+      print('Mise à jour profil pour userId: $userId');
+      
+      // 3. Vérifier si le profil existe
+      final existingProfile = await Supabase.instance.client
+        .from('profiles')
+        .select()
+        .eq('id', userId)
+        .maybeSingle();
+      
+      print('Profil existant: $existingProfile');
+
+      // 4. Mettre à jour ou créer le profil
+      if (existingProfile != null) {
+        // UPDATE
         await Supabase.instance.client
           .from('profiles')
           .update({
@@ -313,23 +330,39 @@ class _ConsentPageState extends State<ConsentPage> {
           })
           .eq('id', userId);
         
-        // 3. Planifier les notifications si activées et pas sur web
-        if (_notificationsEnabled && !kIsWeb) {
-          try {
-            await NotificationService.scheduleDailyNotifications();
-          } catch (e) {
-            print('Erreur planification notifications: $e');
-            // On continue même si ça échoue
-          }
+        print('Profil mis à jour');
+      } else {
+        // INSERT
+        await Supabase.instance.client
+          .from('profiles')
+          .insert({
+            'id': userId,
+            'notifications_enabled': _notificationsEnabled,
+            'data_collection_enabled': _dataCollectionEnabled,
+            'onboarding_completed': true,
+            'created_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+        
+        print('Profil créé');
+      }
+        
+      // 5. Planifier les notifications si activées et pas sur web
+      if (_notificationsEnabled && !kIsWeb) {
+        try {
+          await NotificationService.scheduleDailyNotifications();
+        } catch (e) {
+          print('Erreur planification notifications: $e');
+          // On continue même si ça échoue
         }
       }
 
       if (!mounted) return;
 
-      // 4. Navigation vers la page principale
+      // 6. Navigation vers la page principale
       Navigator.pushReplacementNamed(context, AppRoutes.moodCheck);
 
-      // 5. Message de bienvenue
+      // 7. Message de bienvenue
       await Future.delayed(Duration(milliseconds: 500));
       
       if (!mounted) return;
@@ -344,13 +377,15 @@ class _ConsentPageState extends State<ConsentPage> {
 
     } catch (e) {
       print('Erreur _handleComplete: $e');
+      print('Stack trace: ${StackTrace.current}');
       
       if (!mounted) return;
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur lors de la sauvegarde. Réessaie.'),
+          content: Text('Erreur: ${e.toString()}'),
           backgroundColor: AppColors.error,
+          duration: Duration(seconds: 5),
         ),
       );
     } finally {
