@@ -95007,7 +95007,7 @@ g=m.c
 if(g==null){n=[1]
 s=5
 break}f=t.X
-if(j)A.rp(g,"/mood-check",null,f,f)
+if(j)A.rp(g,"/welcome",null,f,f)
 else A.rp(g,"/onboarding",null,f,f)
 s=9
 break
