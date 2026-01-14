@@ -329,19 +329,17 @@ class _AuthPageState extends State<AuthPage> {
                     decoration: InputDecoration(
                       labelText: 'Mot de passe',
                       prefixIcon: Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
                     ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Mot de passe requis';
+                      }
+                      if (value.length < 6) {
+                        return 'Minimum 6 caractères';
+                      }
+                      return null;
+                    },
+                  ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Mot de passe requis';
