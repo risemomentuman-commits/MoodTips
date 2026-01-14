@@ -98,10 +98,18 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
       if (widget.tip.backgroundMusic != null && widget.tip.backgroundMusic!.isNotEmpty) {
         final musicFile = '${widget.tip.backgroundMusic}.mp3';
         
-        _backgroundMusicPlayer = AudioPlayer();
+        // ✅ Essayer d'utiliser le player préchargé
+        _backgroundMusicPlayer = AudioPreloader.getPlayer(musicFile);
+        
+        if (_backgroundMusicPlayer == null) {
+          // Si pas préchargé, créer un nouveau player
+          print('⚠️ Musique non préchargée : $musicFile');
+          _backgroundMusicPlayer = AudioPlayer();
+          await _backgroundMusicPlayer!.setSource(AssetSource('audio/$musicFile'));
+        }
+        
         await _backgroundMusicPlayer!.setReleaseMode(ReleaseMode.loop);
         await _backgroundMusicPlayer!.setVolume(_musicVolume);
-        await _backgroundMusicPlayer!.setSource(AssetSource('audio/$musicFile'));
         
         print('🎵 Musique prête : $musicFile');
       }

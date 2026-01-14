@@ -26,7 +26,7 @@ void main() async {
     tz.initializeTimeZones();
   }
 
-  // Initialiser les notifications
+    // Initialiser les notifications
   await NotificationService.initialize();
   AudioPreloader.preloadAudio();
 
