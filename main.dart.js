@@ -27936,10 +27936,10 @@ while(true)switch(s){case 0:if($.aj==null)A.aL0()
 $.aj.toString
 s=2
 return A.k(A.aqy("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmeWVoYWx0Ym94eHNpdnF0ZmhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4NjMzMzEsImV4cCI6MjA4MjQzOTMzMX0.bxiMKHrjRFcIfqcoE7oj6lTlFVjcs-FnP6Mq69eWmdc","https://bfyehaltboxxsivqtfhq.supabase.co"),$async$a4q)
-case 2:s=3
+case 2:A.M_()
+s=3
 return A.k(A.ajj(),$async$a4q)
-case 3:A.M_()
-if($.aj==null)A.aL0()
+case 3:if($.aj==null)A.aL0()
 q=$.aj
 q.toString
 p=$.b7()
