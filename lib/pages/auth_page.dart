@@ -326,8 +326,7 @@ class _AuthPageState extends State<AuthPage> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _handleLogin(),
+                    textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: 'Mot de passe',
                       prefixIcon: Icon(Icons.lock_outline),
@@ -348,10 +347,11 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                       filled: true,
                       fillColor: AppColors.backgroundGrey,
+                      helperText: 'Minimum 6 caractères',
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Veuillez entrer votre mot de passe';
+                        return 'Veuillez entrer un mot de passe';
                       }
                       if (value.length < 6) {
                         return 'Le mot de passe doit contenir au moins 6 caractères';
