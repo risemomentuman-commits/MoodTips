@@ -21,6 +21,8 @@ void main() async {
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmeWVoYWx0Ym94eHNpdnF0ZmhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4NjMzMzEsImV4cCI6MjA4MjQzOTMzMX0.bxiMKHrjRFcIfqcoE7oj6lTlFVjcs-FnP6Mq69eWmdc',
   );
 
+  AudioPreloader.preloadAudio();
+
   // Initialiser timezone (seulement si pas web)
   if (!kIsWeb) {
     tz.initializeTimeZones();
@@ -28,8 +30,7 @@ void main() async {
 
     // Initialiser les notifications
   await NotificationService.initialize();
-  AudioPreloader.preloadAudio();
-
+  
   runApp(MyApp());
 }
 
