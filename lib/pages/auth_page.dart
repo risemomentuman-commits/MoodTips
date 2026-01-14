@@ -325,21 +325,41 @@ class _AuthPageState extends State<AuthPage> {
                   // Champ Mot de passe
                   TextFormField(
                     controller: _passwordController,
-                    obscureText: true,
+                    obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _handleLogin(),
                     decoration: InputDecoration(
                       labelText: 'Mot de passe',
                       prefixIcon: Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.backgroundGrey,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Mot de passe requis';
+                        return 'Veuillez entrer votre mot de passe';
                       }
                       if (value.length < 6) {
-                        return 'Minimum 6 caractères';
+                        return 'Le mot de passe doit contenir au moins 6 caractères';
                       }
                       return null;
                     },
                   ),
+                  SizedBox(height: 24),
                   
                   // Champ Confirmer mot de passe (seulement pour signup)
                   if (!_isLogin) ...[
