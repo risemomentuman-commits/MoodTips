@@ -18,6 +18,7 @@ import '../pages/privacy_page.dart';
 import '../pages/context_page.dart';
 import '../pages/sleep_page.dart';
 import '../pages/notifications_settings_page.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;  // ← DOIT être présent
 
 class AppRoutes {
   static const String auth = '/auth';

@@ -22,6 +22,7 @@ class AuthPage extends StatefulWidget {
 class _AuthPageState extends State<AuthPage> {
   bool _isLogin = true;
   bool _isLoading = false;
+  bool _obscurePassword = true;
   
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -251,10 +252,29 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
+  Future<void> _handleLogin() async {
+    if (_isLogin) {
+      await _signIn();
+    } else {
+      // en mode signup, on exige confirmation mdp
+      if (_passwordController.text != _confirmPasswordController.text) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Les mots de passe ne correspondent pas.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+      await _signUp();
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -263,56 +283,63 @@ class _AuthPageState extends State<AuthPage> {
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo
+                  // Logo / Illustration
                   Container(
-                    width: 100,
-                    height: 100,
+                    height: 120,
+                    margin: EdgeInsets.only(bottom: 32),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(30),
+                      shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.psychology_rounded,
-                      size: 60,
+                      Icons.self_improvement,
+                      size: 64,
                       color: AppColors.primary,
                     ),
                   ),
-                  SizedBox(height: 32),
-                  
+
                   // Titre
                   Text(
-                    _isLogin ? 'Connexion' : 'Créer votre compte',
+                    'Bienvenue sur MoodTips',
                     style: TextStyle(
-                      fontSize: 32,
+                      fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textDark,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 8),
+
+                  // Sous-titre
                   Text(
-                    _isLogin 
-                      ? 'Content de te revoir !'
-                      : 'Rejoignez MoodTips et commencez votre voyage vers le bien-être',
+                    _isLogin ? 'Connectez-vous pour continuer' : 'Créez votre compte pour commencer',
                     style: TextStyle(
                       fontSize: 16,
-                      color: AppColors.textMedium,
+                      color: AppColors.textGrey,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 40),
-                  
+                  SizedBox(height: 48),
+
                   // Champ Email
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: 'Email',
                       prefixIcon: Icon(Icons.email_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.backgroundGrey,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Email requis';
+                        return 'Veuillez entrer votre email';
                       }
                       if (!value.contains('@')) {
                         return 'Email invalide';
@@ -321,131 +348,131 @@ class _AuthPageState extends State<AuthPage> {
                     },
                   ),
                   SizedBox(height: 16),
-                  
-                  // Champ Mot de passe
+
+                  // Champ Password
                   TextFormField(
                     controller: _passwordController,
-                    obscureText: true,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _handleLogin(),
                     decoration: InputDecoration(
                       labelText: 'Mot de passe',
                       prefixIcon: Icon(Icons.lock_outline),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Mot de passe requis';
-                      }
-                      if (value.length < 6) {
-                        return 'Minimum 6 caractères';
-                      }
-                      return null;
-                    },
-                  ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Mot de passe requis';
-                      }
-                      if (value.length < 6) {
-                        return 'Minimum 6 caractères';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 24),
-                  
-                  // Champ Confirmer mot de passe (seulement pour signup)
-                  if (!_isLogin) ...[
-                    SizedBox(height: 16),
-                    TextFormField(
-                      controller: _confirmPasswordController,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: 'Confirmer le mot de passe',
-                        prefixIcon: Icon(Icons.lock_outline),
-                      ),
-                      validator: (value) {
-                        if (value != _passwordController.text) {
-                          return 'Les mots de passe ne correspondent pas';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                  
-                  SizedBox(height: 32),
-                  
-                  // Bouton principal
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : (_isLogin ? _signIn : _signUp),
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: _isLoading
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Text(
-                            _isLogin ? 'Se connecter' : 'Créer mon compte',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                    ),
-                  ),
-                  
-                  SizedBox(height: 24),
-                  
-                  // Basculer entre login/signup
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _isLogin 
-                          ? 'Pas encore de compte ? '
-                          : 'Vous avez déjà un compte ? ',
-                        style: TextStyle(color: AppColors.textMedium),
-                      ),
-                      TextButton(
-                        onPressed: _isLoading ? null : () {
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                        onPressed: () {
                           setState(() {
-                            _isLogin = !_isLogin;
-                            _formKey.currentState?.reset();
-                            _passwordController.clear();
-                            _confirmPasswordController.clear();
+                            _obscurePassword = !_obscurePassword;
                           });
                         },
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.backgroundGrey,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Veuillez entrer votre mot de passe';
+                      }
+                      if (value.length < 6) {
+                        return 'Le mot de passe doit contenir au moins 6 caractères';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 24),
+
+                  // Bouton Se connecter
+                  SizedBox(
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleLogin,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isLoading
+                          ? SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : Text(
+                              'Se connecter',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+                  SizedBox(height: 24),
+
+                  // Divider
+                  Row(
+                    children: [
+                      Expanded(child: Divider()),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
-                          _isLogin ? 'S\'inscrire' : 'Se connecter',
+                          'ou',
                           style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
+                            color: AppColors.textGrey,
+                            fontSize: 14,
                           ),
                         ),
                       ),
+                      Expanded(child: Divider()),
                     ],
                   ),
-                  
-                  // Bouton renvoyer email (seulement en mode login)
-                  if (_isLogin) ...[
-                    SizedBox(height: 8),
-                    TextButton(
-                      onPressed: _isLoading ? null : () => _showResendEmailDialog(),
-                      child: Text(
-                        'Renvoyer l\'email de confirmation',
+                  SizedBox(height: 24),
+
+                  // Bouton Créer un compte
+                  SizedBox(
+                    height: 56,
+                    child: OutlinedButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              setState(() {
+                                _isLogin = false;
+                              });
+                            },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(
+                          color: AppColors.primary,
+                          width: 2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Créer un compte',
                         style: TextStyle(
-                          color: AppColors.textMedium,
-                          fontSize: 14,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                  ],
+                  ),
+                  
+                  SizedBox(height: 16),
                 ],
               ),
             ),
@@ -454,7 +481,6 @@ class _AuthPageState extends State<AuthPage> {
       ),
     );
   }
-  
   Future<void> _showResendEmailDialog() async {
     final emailController = TextEditingController();
     
@@ -524,3 +550,6 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 }
+
+                  
+  
