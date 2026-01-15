@@ -20,7 +20,6 @@ class _TipsListPageState extends State<TipsListPage> {
     'respiration': 'Respiration',
     'mouvement': 'Mouvement',
     'mental': 'Mental',
-    'nutrition': 'Nutrition',
     'musique': 'Musique',
   };
 
@@ -65,7 +64,6 @@ class _TipsListPageState extends State<TipsListPage> {
       'respiration': '🌬️',
       'mouvement': '🏃',
       'mental': '🧠',
-      'nutrition': '🥗',
       'musique': '🎵',
     };
     return emojis[category] ?? '✨';
