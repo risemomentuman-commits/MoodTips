@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import '../services/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_routes.dart';
 
 class CreateAccountPage extends StatefulWidget {
+  const CreateAccountPage({Key? key}) : super(key: key);
+
   @override
-  _CreateAccountPageState createState() => _CreateAccountPageState();
+  State<CreateAccountPage> createState() => _CreateAccountPageState();
 }
 
 class _CreateAccountPageState extends State<CreateAccountPage> {
@@ -32,7 +34,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Les mots de passe ne correspondent pas'),
+          content: const Text('Les mots de passe ne correspondent pas'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -42,30 +44,124 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Créer le compte
-      final response = await SupabaseService.signUp(
+      // Créer le compte avec Supabase
+      final response = await Supabase.instance.client.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
+        emailRedirectTo: 'https://risemomentuman-commits.github.io/MoodTips/#/auth',
       );
 
-      if (response.user == null) {
-        throw Exception('Échec de la création du compte');
-      }
-
-      // 2. Mettre à jour l'étape d'onboarding
-      await SupabaseService.updateOnboardingStep(1);
-
-      // 3. Naviguer vers l'onboarding
       if (!mounted) return;
-      Navigator.pushReplacementNamed(
-        context,
-        AppRoutes.onboardingObjectifs,
+
+      if (response.user != null) {
+        // Afficher dialog de succès avec instructions
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.mark_email_read,
+                  size: 60,
+                  color: AppColors.primary,
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Email de confirmation envoyé !',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Vérifie ta boîte mail ${_emailController.text}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textMedium,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Clique sur le lien de confirmation puis reviens ici pour te connecter.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textMedium,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    // Retourner à la page de connexion
+                    Navigator.pushReplacementNamed(
+                      context,
+                      AppRoutes.auth,
+                      arguments: {
+                        'message': 'Email envoyé ! Vérifie ta boîte mail puis connecte-toi.',
+                      },
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Compris !',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      
+      String errorMessage;
+      
+      if (e.message.contains('rate_limit') || e.message.contains('email_send_rate_limit')) {
+        errorMessage = 'Trop de tentatives. Attends 1 minute et réessaie.';
+      } else if (e.message.contains('already registered') || e.message.contains('User already registered')) {
+        errorMessage = 'Cet email est déjà utilisé. Connecte-toi plutôt !';
+      } else if (e.message.contains('invalid email')) {
+        errorMessage = 'Email invalide. Vérifie ton adresse.';
+      } else if (e.message.contains('weak password')) {
+        errorMessage = 'Mot de passe trop faible. Utilise au moins 6 caractères.';
+      } else {
+        errorMessage = 'Erreur : ${e.message}';
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: AppColors.error,
+          duration: Duration(seconds: 5),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur: ${e.toString()}'),
+          content: Text('Erreur inattendue. Réessaie dans quelques instants.'),
           backgroundColor: AppColors.error,
         ),
       );

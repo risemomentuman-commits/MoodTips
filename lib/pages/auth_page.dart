@@ -5,14 +5,10 @@ import '../utils/app_routes.dart';
 
 class AuthPage extends StatefulWidget {
   final String? message;
-  final bool initialIsLogin;
-  final String? prefillEmail;
   
   const AuthPage({
     Key? key,
     this.message,
-    this.initialIsLogin = true,
-    this.prefillEmail,
   }) : super(key: key);
 
   @override
@@ -20,26 +16,18 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
-  bool _isLogin = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
   
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _isLogin = widget.initialIsLogin;
     
-    // Pré-remplir l'email si fourni
-    if (widget.prefillEmail != null && widget.prefillEmail!.isNotEmpty) {
-      _emailController.text = widget.prefillEmail!;
-    }
-    
-    // Afficher le message si présent
+    // Afficher le message si présent (par exemple après validation email)
     if (widget.message != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -57,129 +45,7 @@ class _AuthPageState extends State<AuthPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
-  }
-
-  Future<void> _signUp() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final response = await Supabase.instance.client.auth.signUp(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        emailRedirectTo: 'https://risemomentuman-commits.github.io/MoodTips/#/welcome',
-      );
-
-      if (!mounted) return;
-
-      if (response.user != null) {
-        // Afficher dialog de succès
-        await showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.mark_email_read,
-                  size: 60,
-                  color: AppColors.primary,
-                ),
-                SizedBox(height: 20),
-                Text(
-                  'Email de confirmation envoyé !',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 12),
-                Text(
-                  'Vérifie ta boîte mail ${_emailController.text}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textMedium,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Clique sur le lien de confirmation puis reviens ici.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textMedium,
-                    fontStyle: FontStyle.italic,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    setState(() {
-                      _isLogin = true;
-                      _passwordController.clear();
-                      _confirmPasswordController.clear();
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  ),
-                  child: Text('Compris !'),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      
-      String errorMessage;
-      
-      if (e.message.contains('rate_limit') || e.message.contains('email_send_rate_limit')) {
-        errorMessage = 'Trop de tentatives. Attends 1 minute et réessaie.';
-      } else if (e.message.contains('already registered')) {
-        errorMessage = 'Cet email est déjà utilisé. Connecte-toi plutôt !';
-      } else if (e.message.contains('invalid email')) {
-        errorMessage = 'Email invalide. Vérifie ton adresse.';
-      } else if (e.message.contains('weak password')) {
-        errorMessage = 'Mot de passe trop faible. Utilise au moins 6 caractères.';
-      } else {
-        errorMessage = 'Erreur : ${e.message}';
-      }
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: AppColors.error,
-          duration: Duration(seconds: 5),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur inattendue. Réessaie dans quelques instants.'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
   }
 
   Future<void> _signIn() async {
@@ -209,8 +75,10 @@ class _AuthPageState extends State<AuthPage> {
         if (!mounted) return;
         
         if (onboardingCompleted) {
+          // Onboarding terminé -> aller à welcome
           Navigator.pushReplacementNamed(context, AppRoutes.welcome);
         } else {
+          // Onboarding pas encore fait -> aller à onboarding
           Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
         }
       } else {
@@ -251,25 +119,6 @@ class _AuthPageState extends State<AuthPage> {
       }
     }
   }
-
-  Future<void> _handleLogin() async {
-    if (_isLogin) {
-      await _signIn();
-    } else {
-      // en mode signup, on exige confirmation mdp
-      if (_passwordController.text != _confirmPasswordController.text) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Les mots de passe ne correspondent pas.'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-        return;
-      }
-      await _signUp();
-    }
-  }
-
 
   @override
   Widget build(BuildContext context) {
@@ -314,7 +163,7 @@ class _AuthPageState extends State<AuthPage> {
 
                   // Sous-titre
                   Text(
-                    _isLogin ? 'Connectez-vous pour continuer' : 'Créez votre compte pour commencer',
+                    'Connectez-vous pour continuer',
                     style: TextStyle(
                       fontSize: 16,
                       color: AppColors.textGrey,
@@ -352,8 +201,9 @@ class _AuthPageState extends State<AuthPage> {
                   // Champ Password
                   TextFormField(
                     controller: _passwordController,
+                    obscureText: _obscurePassword,
                     textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _handleLogin(),
+                    onFieldSubmitted: (_) => _signIn(),
                     decoration: InputDecoration(
                       labelText: 'Mot de passe',
                       prefixIcon: Icon(Icons.lock_outline),
@@ -391,7 +241,7 @@ class _AuthPageState extends State<AuthPage> {
                   SizedBox(
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: _isLoading ? null : _handleLogin,
+                      onPressed: _isLoading ? null : _signIn,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
@@ -482,75 +332,4 @@ class _AuthPageState extends State<AuthPage> {
       ),
     );
   }
-  Future<void> _showResendEmailDialog() async {
-    final emailController = TextEditingController();
-    
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Text('Renvoyer l\'email'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Entre ton email pour recevoir un nouveau lien de confirmation :',
-              style: TextStyle(fontSize: 14),
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Envoyer'),
-          ),
-        ],
-      ),
-    );
-    
-    if (result == true && emailController.text.isNotEmpty) {
-      try {
-        await Supabase.instance.client.auth.resend(
-          type: OtpType.signup,
-          email: emailController.text.trim(),
-        );
-        
-        if (!mounted) return;
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Email de confirmation renvoyé !'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur : ${e.toString()}'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
-  }
 }
-
-                  
-  

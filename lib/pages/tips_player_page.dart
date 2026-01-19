@@ -35,6 +35,7 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   AudioPlayer? _backgroundMusicPlayer;
   bool _isSpeaking = false;
   double _musicVolume = 0.3;
+  bool _hasSpokenFirstStep = false; // ✅ NOUVEAU: Pour éviter la répétition
   
   // Animations
   late AnimationController _breatheController;
@@ -75,9 +76,9 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
 
   void _initializeTTS() async {
     await _flutterTts.setLanguage("fr-FR");
-    await _flutterTts.setSpeechRate(0.45);
+    await _flutterTts.setSpeechRate(0.40); // ✅ Plus lent (était 0.45)
     await _flutterTts.setVolume(1.0);
-    await _flutterTts.setPitch(1.0);
+    await _flutterTts.setPitch(1.15); // ✅ Plus aigu = plus féminin (était 1.0)
     
     _flutterTts.setCompletionHandler(() {
       if (mounted) {
@@ -129,7 +130,9 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   Future<void> _speakCurrentStep() async {
     final step = _steps[_currentStepIndex];
     String textToSpeak = "${step.title}. ${step.description}";
-    await TtsService.speak(textToSpeak);
+    
+    setState(() => _isSpeaking = true);
+    await _flutterTts.speak(textToSpeak);
     print('🗣️ Voix lancée: ${step.title}');
   }
 
@@ -141,16 +144,10 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
     }
   }
 
- void _startExercise() async {
+  void _startExercise() async {
     setState(() => _isPlaying = true);
     
-    // ✅ Lancer la voix EN PREMIER (await pour attendre)
-    await Future.delayed(Duration(milliseconds: 500));
-    final step = _steps[_currentStepIndex];
-    String textToSpeak = "${step.title}. ${step.description}";
-    await TtsService.speak(textToSpeak);
-    
-    // Lancer la musique
+    // ✅ Lancer la musique AVANT la voix
     if (_backgroundMusicPlayer != null) {
       try {
         await _backgroundMusicPlayer!.play(
@@ -162,8 +159,13 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
       }
     }
     
-    // Lancer la voix
-    _speakCurrentStep();
+    // ✅ Attendre 500ms puis lancer la voix UNE SEULE FOIS
+    await Future.delayed(Duration(milliseconds: 500));
+    
+    if (!_hasSpokenFirstStep) {
+      await _speakCurrentStep();
+      _hasSpokenFirstStep = true;
+    }
     
     // Démarrer le timer
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
@@ -217,7 +219,11 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   void _completeExercise() async {
     _timer?.cancel();
     _flutterTts.stop();
-    _backgroundMusicPlayer?.stop();
+    
+    // ✅ FADE OUT de la musique sur 2 secondes
+    if (_backgroundMusicPlayer != null) {
+      await _fadeOutMusic();
+    }
     
     setState(() {
       _isPlaying = false;
@@ -244,6 +250,24 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
     
     // Retour
     Navigator.pop(context, true);
+  }
+
+  // ✅ NOUVEAU: Fade out progressif de la musique
+  Future<void> _fadeOutMusic() async {
+    if (_backgroundMusicPlayer == null) return;
+    
+    const steps = 20; // 20 étapes
+    const duration = 2000; // 2 secondes
+    const stepDuration = duration ~/ steps;
+    
+    for (int i = steps; i >= 0; i--) {
+      final volume = (_musicVolume * i / steps);
+      await _backgroundMusicPlayer!.setVolume(volume);
+      await Future.delayed(Duration(milliseconds: stepDuration));
+    }
+    
+    await _backgroundMusicPlayer!.stop();
+    await _backgroundMusicPlayer!.setVolume(_musicVolume); // Reset pour la prochaine fois
   }
 
   // ========== FEEDBACK POST-EXERCICE ==========
