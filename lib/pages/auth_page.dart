@@ -448,9 +448,10 @@ class _AuthPageState extends State<AuthPage> {
                       onPressed: _isLoading
                           ? null
                           : () {
-                              setState(() {
-                                _isLogin = false;
-                              });
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.createAccount,
+                              );
                             },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
@@ -462,7 +463,7 @@ class _AuthPageState extends State<AuthPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Créer un compte',
                         style: TextStyle(
                           fontSize: 18,
