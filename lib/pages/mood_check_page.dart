@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
 import '../models/emotion.dart';
+import '../models/user_profile.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_routes.dart';
 import '../widgets/emotion_wheel.dart';
@@ -14,11 +15,13 @@ class MoodCheckPage extends StatefulWidget {
 
 class _MoodCheckPageState extends State<MoodCheckPage> {
   Future<List<Emotion>>? _emotionsFuture;
+  Future<UserProfile?>? _profileFuture;
   
   @override
   void initState() {
     super.initState();
     _emotionsFuture = SupabaseService.getEmotions();
+    _profileFuture = SupabaseService.getProfile(); // ✅ NOUVEAU : Charger le profil
   }
 
   Color _getEmotionColor(String emotionName) {
@@ -108,6 +111,63 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                       ),
                     ],
                   ),
+                ),
+
+                // ✅ NOUVEAU : Widget Streak et Stats
+                FutureBuilder<UserProfile?>(
+                  future: _profileFuture,
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData || snapshot.data == null) {
+                      return SizedBox.shrink();
+                    }
+
+                    final profile = snapshot.data!;
+
+                    return Container(
+                      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.primary,
+                            AppColors.secondary,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildQuickStat(
+                            icon: Icons.local_fire_department,
+                            value: '${profile.currentStreak}',
+                            label: 'jours de suite',
+                            color: Colors.white,
+                          ),
+                          Container(
+                            width: 1,
+                            height: 40,
+                            color: Colors.white.withOpacity(0.3),
+                          ),
+                          _buildQuickStat(
+                            icon: Icons.check_circle_outline,
+                            value: '${profile.totalTipsCompleted}',
+                            label: 'tips complétés',
+                            color: Colors.white,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
 
                 SizedBox(height: 10),
@@ -214,6 +274,38 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
           ),
         ),
       ),
+    );
+  }
+
+  // ✅ NOUVEAU : Widget pour afficher une stat rapide
+  Widget _buildQuickStat({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 32),
+        SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: color.withOpacity(0.9),
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
   
