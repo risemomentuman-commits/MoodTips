@@ -16,16 +16,50 @@ class MoodCheckPage extends StatefulWidget {
 class _MoodCheckPageState extends State<MoodCheckPage> {
   Future<List<Emotion>>? _emotionsFuture;
   Future<UserProfile?>? _profileFuture;
+  bool _isExpressMode = false; // ✅ NOUVEAU : Mode Express
   
   @override
   void initState() {
     super.initState();
     _emotionsFuture = SupabaseService.getEmotions();
-    _profileFuture = SupabaseService.getProfile(); // ✅ NOUVEAU : Charger le profil
+    _profileFuture = SupabaseService.getProfile();
   }
 
   Color _getEmotionColor(String emotionName) {
     return AppColors.emotions[emotionName.toLowerCase()] ?? AppColors.primary;
+  }
+
+  // ✅ NOUVEAU : Afficher message de succès en mode Express
+  void _showExpressSuccess(String emotionName) {
+    HapticFeedback.heavyImpact();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Check-in validé ! Humeur "$emotionName" enregistrée 🎉',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.success,
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+    
+    // Recharger le profil pour mettre à jour le streak
+    setState(() {
+      _profileFuture = SupabaseService.getProfile();
+    });
   }
 
   @override
@@ -113,7 +147,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   ),
                 ),
 
-                // ✅ NOUVEAU : Widget Streak et Stats
+                // Widget Streak et Stats
                 FutureBuilder<UserProfile?>(
                   future: _profileFuture,
                   builder: (context, snapshot) {
@@ -170,10 +204,74 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   },
                 ),
 
+                SizedBox(height: 16),
+
+                // ✅ NOUVEAU : Toggle Mode Express
+                Container(
+                  margin: EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            _isExpressMode ? Icons.flash_on : Icons.tune,
+                            color: _isExpressMode ? AppColors.warning : AppColors.primary,
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _isExpressMode ? 'Mode Express' : 'Mode Standard',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textDark,
+                                ),
+                              ),
+                              Text(
+                                _isExpressMode ? 'Check-in rapide (5 sec)' : 'Parcours complet',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textMedium,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Switch(
+                        value: _isExpressMode,
+                        onChanged: (value) {
+                          setState(() => _isExpressMode = value);
+                          HapticFeedback.lightImpact();
+                        },
+                        activeColor: AppColors.warning,
+                      ),
+                    ],
+                  ),
+                ),
+
                 SizedBox(height: 10),
 
                 Text(
-                  'Fais tourner la roue et sélectionne',
+                  _isExpressMode 
+                      ? 'Sélectionne ton émotion et c\'est tout !'
+                      : 'Fais tourner la roue et sélectionne',
                   style: TextStyle(
                     fontSize: 16,
                     color: AppColors.textMedium,
@@ -208,28 +306,52 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                       onEmotionSelected: (emotion) async {
                         HapticFeedback.mediumImpact();
                         
-                        final moodLog = await SupabaseService.createMoodLog(
-                          emotionId: emotion.id,
-                        );
-                        
-                        if (moodLog == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Erreur lors de l\'enregistrement'),
-                              backgroundColor: AppColors.error,
-                            ),
+                        // ✅ NOUVEAU : Comportement selon le mode
+                        if (_isExpressMode) {
+                          // MODE EXPRESS : Juste enregistrer et rester sur la page
+                          final moodLog = await SupabaseService.createMoodLog(
+                            emotionId: emotion.id,
                           );
-                          return;
+                          
+                          if (moodLog == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erreur lors de l\'enregistrement'),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                            return;
+                          }
+                          
+                          // Afficher le succès
+                          _showExpressSuccess(emotion.name);
+                          
+                        } else {
+                          // MODE STANDARD : Parcours complet (comportement actuel)
+                          final moodLog = await SupabaseService.createMoodLog(
+                            emotionId: emotion.id,
+                          );
+                          
+                          if (moodLog == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erreur lors de l\'enregistrement'),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                            return;
+                          }
+                          
+                          // Aller vers Context (comportement normal)
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.context,
+                            arguments: {
+                              'emotionId': emotion.id,
+                              'moodLogId': moodLog.id,
+                            },
+                          );
                         }
-                        
-                        Navigator.pushNamed(
-                          context,
-                          AppRoutes.context,
-                          arguments: {
-                            'emotionId': emotion.id,
-                            'moodLogId': moodLog.id,
-                          },
-                        );
                       },
                     );
                   },
@@ -277,7 +399,6 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
     );
   }
 
-  // ✅ NOUVEAU : Widget pour afficher une stat rapide
   Widget _buildQuickStat({
     required IconData icon,
     required String value,
