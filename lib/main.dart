@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'utils/app_routes.dart';
@@ -11,6 +10,8 @@ import 'services/supabase_service.dart';
 import 'services/notification_service.dart';
 import 'services/audio_preloader.dart';
 import 'pages/welcome_page.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'services/web_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,12 @@ void main() async {
     url: 'https://bfyehaltboxxsivqtfhq.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmeWVoYWx0Ym94eHNpdnF0ZmhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4NjMzMzEsImV4cCI6MjA4MjQzOTMzMX0.bxiMKHrjRFcIfqcoE7oj6lTlFVjcs-FnP6Mq69eWmdc',
   );
+  // Initialiser Firebase Web (seulement sur Web)
+  if (kIsWeb) {
+   await WebNotificationService.initialize();
+   WebNotificationService.setupListeners();
+  }
+ 
 
   AudioPreloader.preloadAudio();
 

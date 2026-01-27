@@ -44,3 +44,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase credentials
+service-account.json
+*firebase-adminsdk*.json
+firebase-service-account.json
+*.json
+!pubspec.json

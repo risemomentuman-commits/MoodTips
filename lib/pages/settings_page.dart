@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_routes.dart';
+import '../widgets/push_notification_settings_widget.dart';
 
 class SettingsPage extends StatelessWidget {
   Future<void> _handleLogout(BuildContext context) async {
@@ -226,18 +227,10 @@ class SettingsPage extends StatelessWidget {
                     Navigator.pushNamed(context, AppRoutes.profile);
                   },
                 ),
+                
+                PushNotificationSettingsWidget(),
 
-                _buildSettingCard(
-                  context: context,
-                  icon: Icons.notifications_outlined,
-                  iconColor: Colors.orange,
-                  title: 'Notifications',
-                  subtitle: 'Rappels et alertes',
-                  onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.notifications);
-                  },
-                ),
-
+                                
                 _buildSettingCard(
                   context: context,
                   icon: Icons.lock_outline,
