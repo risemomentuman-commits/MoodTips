@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
+import '../services/emotion_analysis_service.dart';
 import '../models/emotion.dart';
 import '../models/user_profile.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_routes.dart';
 import '../widgets/emotion_wheel.dart';
+import '../widgets/emotion_alert_widget.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -16,20 +18,33 @@ class MoodCheckPage extends StatefulWidget {
 class _MoodCheckPageState extends State<MoodCheckPage> {
   Future<List<Emotion>>? _emotionsFuture;
   Future<UserProfile?>? _profileFuture;
-  bool _isExpressMode = false; // ✅ NOUVEAU : Mode Express
+  Future<Map<String, dynamic>>? _emotionAnalysisFuture; // ✅ NOUVEAU
+  
+  bool _isExpressMode = false;
+  bool _showAlert = true; // ✅ NOUVEAU : Contrôle l'affichage de l'alerte
   
   @override
   void initState() {
     super.initState();
     _emotionsFuture = SupabaseService.getEmotions();
     _profileFuture = SupabaseService.getProfile();
+    _loadEmotionAnalysis(); // ✅ NOUVEAU
+  }
+
+  // ✅ NOUVEAU : Charger l'analyse des émotions
+  Future<void> _loadEmotionAnalysis() async {
+    final shouldShow = await EmotionAnalysisService.shouldShowAlert();
+    if (shouldShow) {
+      setState(() {
+        _emotionAnalysisFuture = EmotionAnalysisService.analyzeRecentEmotions();
+      });
+    }
   }
 
   Color _getEmotionColor(String emotionName) {
     return AppColors.emotions[emotionName.toLowerCase()] ?? AppColors.primary;
   }
 
-  // ✅ NOUVEAU : Afficher message de succès en mode Express
   void _showExpressSuccess(String emotionName) {
     HapticFeedback.heavyImpact();
     
@@ -56,9 +71,10 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
       ),
     );
     
-    // Recharger le profil pour mettre à jour le streak
+    // Recharger le profil ET l'analyse
     setState(() {
       _profileFuture = SupabaseService.getProfile();
+      _loadEmotionAnalysis(); // ✅ Recharger l'analyse après une nouvelle émotion
     });
   }
 
@@ -204,9 +220,32 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   },
                 ),
 
+                // ✅ NOUVEAU : Widget d'alerte émotionnelle
+                if (_showAlert)
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: _emotionAnalysisFuture,
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return SizedBox.shrink();
+                      
+                      final analysis = snapshot.data!;
+                      
+                      if (!analysis['shouldShow']) return SizedBox.shrink();
+                      
+                      return EmotionAlertWidget(
+                        alertLevel: analysis['alertLevel'],
+                        message: analysis['message'],
+                        action: analysis['action'],
+                        consecutiveNegative: analysis['consecutiveNegative'],
+                        onDismiss: () {
+                          setState(() => _showAlert = false);
+                        },
+                      );
+                    },
+                  ),
+
                 SizedBox(height: 16),
 
-                // ✅ NOUVEAU : Toggle Mode Express
+                // Toggle Mode Express
                 Container(
                   margin: EdgeInsets.symmetric(horizontal: 20),
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -306,9 +345,8 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                       onEmotionSelected: (emotion) async {
                         HapticFeedback.mediumImpact();
                         
-                        // ✅ NOUVEAU : Comportement selon le mode
                         if (_isExpressMode) {
-                          // MODE EXPRESS : Juste enregistrer et rester sur la page
+                          // MODE EXPRESS
                           final moodLog = await SupabaseService.createMoodLog(
                             emotionId: emotion.id,
                           );
@@ -323,11 +361,10 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                             return;
                           }
                           
-                          // Afficher le succès
                           _showExpressSuccess(emotion.name);
                           
                         } else {
-                          // MODE STANDARD : Parcours complet (comportement actuel)
+                          // MODE STANDARD
                           final moodLog = await SupabaseService.createMoodLog(
                             emotionId: emotion.id,
                           );
@@ -342,7 +379,6 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                             return;
                           }
                           
-                          // Aller vers Context (comportement normal)
                           Navigator.pushNamed(
                             context,
                             AppRoutes.context,
