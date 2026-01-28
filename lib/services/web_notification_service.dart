@@ -64,7 +64,7 @@ class WebNotificationService {
     print('🚀 [FCM] requestPermissionAndRegisterToken() called');
 
     if (!kIsWeb || _messaging == null) {
-      print('❌ [FCM] Not ready (web=${kIsWeb}, messaging=${_messaging != null})');
+      print('❌ [FCM] Not ready (web=$kIsWeb, messaging=${_messaging != null})');
       return false;
     }
 
@@ -75,23 +75,26 @@ class WebNotificationService {
         sound: true,
       );
 
-      print('🔔 [FCM] Permission status: ${settings.authorizationStatus}');
+      print('🔔 Permission: ${settings.authorizationStatus}');
+      // web-only: état permission navigateur
+      print('🔔 Browser Notification.permission: ${html.Notification.permission}');
 
-      final granted = settings.authorizationStatus == AuthorizationStatus.authorized;
+      final granted =
+          settings.authorizationStatus == AuthorizationStatus.authorized;
 
       if (!granted) {
-        print('❌ [FCM] Permission denied (or not authorized).');
+        print('❌ [FCM] Permission denied or not authorized.');
         return false;
       }
 
-      await _getAndStoreToken();
-
+      await _getAndStoreToken(); // ou _getAndSaveToken() selon ton nom
       return true;
     } catch (e) {
       print('❌ [FCM] Permission request error: $e');
       return false;
     }
   }
+
 
   /// 3) Récupère le token FCM (Web) et l’enregistre
   static Future<void> _getAndStoreToken() async {

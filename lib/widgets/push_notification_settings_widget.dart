@@ -35,29 +35,70 @@ class _PushNotificationSettingsWidgetState extends State<PushNotificationSetting
   }
   
   Future<void> _toggleNotifications(bool value) async {
+    if (_isLoading) return;
+
     setState(() => _isLoading = true);
-    
-    await WebNotificationService.setNotificationsEnabled(value);
-    
-    // Relire depuis la base pour être sûr
-    final actualValue = await WebNotificationService.areNotificationsEnabled();
-    setState(() {
-      _isEnabled = actualValue;
-      _isLoading = false;
-    });
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(value 
-            ? '🔔 Notifications activées ! Tu recevras des rappels quotidiens' 
-            : '🔕 Notifications désactivées'),
-          backgroundColor: value ? AppColors.success : AppColors.textMedium,
-          duration: Duration(seconds: 3),
-        ),
-      );
+
+    if (value) {
+      // === ACTIVER ===
+      final ok = await WebNotificationService.requestPermissionAndRegisterToken();
+
+      if (ok) {
+        // UI = ON immédiatement
+        setState(() {
+          _isEnabled = true;
+          _isLoading = false;
+        });
+
+        // Sync DB en arrière-plan (si user connecté)
+        WebNotificationService.setNotificationsEnabled(true);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('🔔 Notifications activées'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      } else {
+        // Permission refusée ou token KO → on reste OFF
+        setState(() {
+          _isEnabled = false;
+          _isLoading = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '❌ Autorise les notifications dans ton navigateur',
+              ),
+              backgroundColor: AppColors.warning,
+            ),
+          );
+        }
+      }
+    } else {
+      // === DÉSACTIVER ===
+      setState(() {
+        _isEnabled = false;
+        _isLoading = false;
+      });
+
+      // Sync DB
+      WebNotificationService.setNotificationsEnabled(false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🔕 Notifications désactivées'),
+          ),
+        );
+      }
     }
   }
+
   
   @override
   Widget build(BuildContext context) {
@@ -136,9 +177,10 @@ class _PushNotificationSettingsWidgetState extends State<PushNotificationSetting
               ),
               Switch(
                 value: _isEnabled,
-                onChanged: _toggleNotifications,
+                onChanged: _isLoading ? null : _toggleNotifications,
                 activeColor: AppColors.primary,
               ),
+
             ],
           ),
           
