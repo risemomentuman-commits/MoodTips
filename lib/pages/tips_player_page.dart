@@ -113,10 +113,12 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   }
 
   Future<void> _speakCurrentStep() async {
+    print('🎙️ _speakCurrentStep APPELÉ');
+
     final step = _steps[_currentStepIndex];
     String textToSpeak = "${step.title}. ${step.description}";
 
-    print('🎙️ AVANT speak: $textToSpeak');
+    print('🎙️ Texte: $textToSpeak');
     
     setState(() => _isSpeaking = true);
     try {
@@ -138,6 +140,9 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
 
   void _startExercise() async {
     setState(() => _isPlaying = true);
+
+    // Lancer la voix automatiquement
+    await _speakCurrentStep();
     
     // ✅ Lancer la musique AVANT la voix
     if (_backgroundMusicPlayer != null) {
@@ -150,10 +155,6 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
         print('❌ Erreur lecture musique: $e');
       }
     }
-    
-    // Lancer la voix automatiquement
-    await _speakCurrentStep();
-    
        
     // Démarrer le timer
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
