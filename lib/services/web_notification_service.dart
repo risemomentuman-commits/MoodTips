@@ -31,13 +31,13 @@ class WebNotificationService {
       // IMPORTANT: ne pas mettre ces clés en public si tu peux éviter
       await Firebase.initializeApp(
         options: const FirebaseOptions(
-          apiKey: "REPLACE_API_KEY",
-          authDomain: "REPLACE_AUTH_DOMAIN",
-          projectId: "REPLACE_PROJECT_ID",
-          storageBucket: "REPLACE_STORAGE_BUCKET",
-          messagingSenderId: "REPLACE_SENDER_ID",
-          appId: "REPLACE_APP_ID",
-          measurementId: "REPLACE_MEASUREMENT_ID",
+          apiKey: "AIzaSyCSdZQtz9blpwpXx54EQ4mHudmcGs66QjA",
+          authDomain: "moodtips-f2f0b.firebaseapp.com",
+          projectId: "moodtips-f2f0b",
+          storageBucket: "moodtips-f2f0b.firebasestorage.app",
+          messagingSenderId: "988485491350",
+          appId: "1:988485491350:web:27d494da0d1f32553480b7",
+          measurementId: "G-Y1QG0N5B52"
         ),
       );
 
