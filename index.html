@@ -96,11 +96,16 @@
   <!-- Firebase Messaging Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js')
-        .then((reg) => console.log('✅ Firebase SW registered'))
-        .catch((err) => console.error('❌ Firebase SW failed:', err));
+      navigator.serviceWorker.register(
+        '/MoodTips/firebase-messaging-sw.js'
+      ).then(function(registration) {
+        console.log('✅ Custom SW registered with scope:', registration.scope);
+      }).catch(function(error) {
+        console.error('❌ Custom SW registration failed:', error);
+      });
     }
   </script>
+
 
   <script src="flutter_bootstrap.js" async></script>
 </body>
