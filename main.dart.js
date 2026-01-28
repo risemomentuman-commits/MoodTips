@@ -29733,7 +29733,7 @@ if(m==null){A.aE("\u274c User non connect\xe9")
 s=1
 break}j=t.z
 s=8
-return A.k(k.cC("profiles").bM(0,A.Q(["fcm_token",n,"push_notifications_enabled",!0],j,j)).d9("id",m),$async$V8)
+return A.k(k.cC("profiles").bM(0,A.Q(["fcm_token",n,"notifications_enabled",!0],j,j)).d9("id",m),$async$V8)
 case 8:A.aE("\u2705 Token sauvegard\xe9 en DB")
 $.V9.gGN().ga0y().iP(new A.atZ())
 p=2
@@ -29797,7 +29797,7 @@ break}s=8
 break
 case 9:j=t.z
 s=11
-return A.k(k.cC("profiles").bM(0,A.Q(["push_notifications_enabled",!1],j,j)).d9("id",n),$async$Vb)
+return A.k(k.cC("profiles").bM(0,A.Q(["notifications_enabled",!1],j,j)).d9("id",n),$async$Vb)
 case 11:A.aE("\u2705 Notifications d\xe9sactiv\xe9es")
 case 8:p=2
 s=6
@@ -29823,9 +29823,9 @@ n=j==null?null:j.a
 if(n==null){q=!1
 s=1
 break}s=7
-return A.k(k.cC("profiles").hT(0,"push_notifications_enabled").d9("id",n).kC(0),$async$au0)
+return A.k(k.cC("profiles").hT(0,"notifications_enabled").d9("id",n).kC(0),$async$au0)
 case 7:m=b
-k=J.ax(m,"push_notifications_enabled")
+k=J.ax(m,"notifications_enabled")
 if(k==null)k=!1
 q=k
 s=1
