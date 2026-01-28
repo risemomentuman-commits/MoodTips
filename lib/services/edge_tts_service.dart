@@ -1,41 +1,71 @@
 // lib/services/edge_tts_service.dart
-// Service Text-to-Speech utilisant Edge TTS (voix Microsoft neurales)
+// Service Text-to-Speech utilisant Web Speech API (natif navigateur)
+// Remplace Edge TTS pour fiabilité 100%
 
-import 'dart:typed_data';
-import 'package:http/http.dart' as http;
-import 'package:audioplayers/audioplayers.dart';
+import 'dart:html' as html;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class EdgeTtsService {
-  static final AudioPlayer _audioPlayer = AudioPlayer();
+  static html.SpeechSynthesisUtterance? _currentUtterance;
   static bool _isInitialized = false;
   static bool _isSpeaking = false;
   
-  // Voix féminine française douce (Microsoft Neural)
-  static const String _voiceName = 'fr-FR-DeniseNeural';
-  
-  // Alternative : 'fr-FR-EloiseNeural' (encore plus douce)
-  
   /// Initialiser le service
   static Future<void> initialize() async {
-    if (_isInitialized) return;
+    if (!kIsWeb) {
+      print('❌ EdgeTtsService: Not on web');
+      return;
+    }
     
     try {
-      // Configurer l'audio player
-      await _audioPlayer.setReleaseMode(ReleaseMode.stop);
-      _isInitialized = true;
-      print('✅ Edge TTS initialisé avec voix: $_voiceName');
+      // Vérifier que Web Speech API est disponible
+      if (html.window.speechSynthesis != null) {
+        _isInitialized = true;
+        print('✅ Web Speech API initialisé');
+        
+        // Charger les voix disponibles
+        _loadVoices();
+      } else {
+        print('❌ Web Speech API non disponible dans ce navigateur');
+      }
     } catch (e) {
-      print('❌ Erreur initialisation Edge TTS: $e');
+      print('❌ Erreur initialisation Web Speech: $e');
     }
   }
   
-  /// Parler - Convertir texte en audio et jouer
+  /// Charger les voix disponibles
+  static void _loadVoices() {
+    try {
+      final voices = html.window.speechSynthesis!.getVoices();
+      print('🎙️ ${voices.length} voix disponibles');
+      
+      // Lister les voix françaises
+      final frenchVoices = voices.where((v) => 
+        v.lang?.startsWith('fr') == true
+      ).toList();
+      
+      if (frenchVoices.isNotEmpty) {
+        print('✅ Voix françaises trouvées: ${frenchVoices.length}');
+        for (var voice in frenchVoices) {
+          print('  - ${voice.name} (${voice.lang})');
+        }
+      } else {
+        print('⚠️ Aucune voix française trouvée');
+      }
+    } catch (e) {
+      print('❌ Erreur chargement voix: $e');
+    }
+  }
+  
+  /// Parler - Convertir texte en audio
   static Future<void> speak(String text) async {
+    if (!kIsWeb) return;
+    
     if (!_isInitialized) {
       await initialize();
     }
     
+    // Arrêter toute voix en cours
     if (_isSpeaking) {
       await stop();
     }
@@ -43,22 +73,42 @@ class EdgeTtsService {
     try {
       _isSpeaking = true;
       
-      // Générer l'audio via Edge TTS
-      final audioData = await _generateAudio(text);
+      // Créer l'utterance
+      _currentUtterance = html.SpeechSynthesisUtterance(text);
       
-      if (audioData == null) {
-        print('❌ Échec génération audio');
+      // Sélectionner une voix française
+      final voices = html.window.speechSynthesis!.getVoices();
+      final frenchVoice = voices.firstWhere(
+        (v) => v.lang?.startsWith('fr-FR') == true && v.name?.contains('Female') == true,
+        orElse: () => voices.firstWhere(
+          (v) => v.lang?.startsWith('fr') == true,
+          orElse: () => voices.first,
+        ),
+      );
+      
+      _currentUtterance!.voice = frenchVoice;
+      
+      // Configuration pour voix douce et naturelle
+      _currentUtterance!.rate = 0.85;  // Vitesse (0.8 = un peu plus lent que normal)
+      _currentUtterance!.pitch = 1.0;  // Ton normal
+      _currentUtterance!.volume = 1.0; // Volume max
+      
+      print('🎙️ Parle avec voix: ${frenchVoice.name}');
+      
+      // Écouter la fin
+      _currentUtterance!.onEnd.listen((_) {
+        print('✅ Voix terminée');
         _isSpeaking = false;
-        return;
-      }
+      });
       
-      // Jouer l'audio
-      await _audioPlayer.play(BytesSource(audioData));
+      // Écouter les erreurs
+      _currentUtterance!.onError.listen((error) {
+        print('❌ Erreur voix: $error');
+        _isSpeaking = false;
+      });
       
-      // Attendre la fin de lecture
-      await _audioPlayer.onPlayerComplete.first;
-      
-      _isSpeaking = false;
+      // Lancer la synthèse
+      html.window.speechSynthesis!.speak(_currentUtterance!);
       
     } catch (e) {
       print('❌ Erreur speak: $e');
@@ -68,9 +118,13 @@ class EdgeTtsService {
   
   /// Arrêter la lecture
   static Future<void> stop() async {
+    if (!kIsWeb) return;
+    
     try {
-      await _audioPlayer.stop();
+      html.window.speechSynthesis?.cancel();
       _isSpeaking = false;
+      _currentUtterance = null;
+      print('🛑 Voix arrêtée');
     } catch (e) {
       print('❌ Erreur stop: $e');
     }
@@ -78,8 +132,11 @@ class EdgeTtsService {
   
   /// Mettre en pause
   static Future<void> pause() async {
+    if (!kIsWeb) return;
+    
     try {
-      await _audioPlayer.pause();
+      html.window.speechSynthesis?.pause();
+      print('⏸️ Voix en pause');
     } catch (e) {
       print('❌ Erreur pause: $e');
     }
@@ -87,8 +144,11 @@ class EdgeTtsService {
   
   /// Reprendre
   static Future<void> resume() async {
+    if (!kIsWeb) return;
+    
     try {
-      await _audioPlayer.resume();
+      html.window.speechSynthesis?.resume();
+      print('▶️ Voix reprise');
     } catch (e) {
       print('❌ Erreur resume: $e');
     }
@@ -97,80 +157,28 @@ class EdgeTtsService {
   /// Est en train de parler ?
   static bool get isSpeaking => _isSpeaking;
   
-  /// Générer l'audio via Edge TTS API
-  static Future<Uint8List?> _generateAudio(String text) async {
-    try {
-      // URL de l'API Edge TTS (service gratuit)
-      final url = 'https://edge-tts-api.vercel.app/api/tts';
-      
-      // Paramètres
-      final params = {
-        'text': text,
-        'voice': _voiceName,
-        'rate': '0%',   // Vitesse normale (peut ajuster: -20% à +20%)
-        'pitch': '0%',  // Ton normal (peut ajuster: -20% à +20%)
-      };
-      
-      // Construire l'URL
-      final uri = Uri.parse(url).replace(queryParameters: params);
-      
-      // Faire la requête
-      final response = await http.get(uri).timeout(
-        Duration(seconds: 10),
-        onTimeout: () => throw Exception('Timeout Edge TTS'),
-      );
-      
-      if (response.statusCode == 200) {
-        print('✅ Audio généré (${response.bodyBytes.length} bytes)');
-        return response.bodyBytes;
-      } else {
-        print('❌ Erreur API: ${response.statusCode}');
-        return null;
-      }
-      
-    } catch (e) {
-      print('❌ Erreur génération audio: $e');
-      return null;
-    }
-  }
-  
-  /// Changer la voix
-  static void setVoice(String voiceName) {
-    // Peut être utilisé pour tester différentes voix
-    // Ex: EdgeTtsService.setVoice('fr-FR-EloiseNeural');
-  }
-  
-  /// Ajuster la vitesse (-50% à +100%)
-  static void setSpeed(String rate) {
-    // Ex: EdgeTtsService.setSpeed('-10%'); // 10% plus lent
-    // Ex: EdgeTtsService.setSpeed('+20%'); // 20% plus rapide
-  }
-  
   /// Libérer les ressources
   static Future<void> dispose() async {
-    try {
-      await _audioPlayer.dispose();
-      _isInitialized = false;
-      _isSpeaking = false;
-    } catch (e) {
-      print('❌ Erreur dispose: $e');
-    }
+    await stop();
+    _isInitialized = false;
   }
 }
 
-/// VOIX FRANÇAISES DISPONIBLES (Microsoft Neural)
+/// NOTES SUR WEB SPEECH API
 /// 
-/// Féminines douces :
-/// - fr-FR-DeniseNeural (Recommandé pour MoodTips)
-/// - fr-FR-EloiseNeural (Très douce)
+/// Avantages :
+/// - Natif au navigateur (pas d'API externe)
+/// - 100% fiable
+/// - Gratuit et illimité
+/// - Voix françaises disponibles
+/// - Fonctionne sur Chrome, Safari, Firefox
 /// 
-/// Féminines énergiques :
-/// - fr-FR-BrigitteNeural
+/// Qualité :
+/// - Chrome/Edge : Très bonnes voix (Microsoft)
+/// - Safari : Bonnes voix (Apple)
+/// - Firefox : Correctes
 /// 
-/// Masculines :
-/// - fr-FR-HenriNeural (Calme)
-/// - fr-FR-ClaudeNeural
-/// - fr-FR-AlainNeural
-/// 
-/// Pour tester d'autres voix :
-/// EdgeTtsService.setVoice('fr-FR-EloiseNeural');
+/// Voix féminines françaises typiques :
+/// - Chrome : "Google français" (féminine)
+/// - Edge : "Microsoft Hortense" (féminine, douce)
+/// - Safari : "Amélie" (féminine)
