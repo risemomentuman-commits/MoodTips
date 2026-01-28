@@ -58,14 +58,13 @@ class EdgeTtsService {
   }
   
   /// Parler - Convertir texte en audio
-  static Future<void> speak(String text) async {
+  sstatic Future<void> speak(String text) async {
     if (!kIsWeb) return;
     
     if (!_isInitialized) {
       await initialize();
     }
     
-    // Arrêter toute voix en cours
     if (_isSpeaking) {
       await stop();
     }
@@ -73,41 +72,38 @@ class EdgeTtsService {
     try {
       _isSpeaking = true;
       
-      // Créer l'utterance
       _currentUtterance = html.SpeechSynthesisUtterance(text);
       
-      // Sélectionner une voix française
+      // DÉBUGAGE : Afficher TOUTES les voix disponibles
       final voices = html.window.speechSynthesis!.getVoices();
-      final frenchVoice = voices.firstWhere(
-        (v) => v.lang?.startsWith('fr-FR') == true && v.name?.contains('Female') == true,
-        orElse: () => voices.firstWhere(
-          (v) => v.lang?.startsWith('fr') == true,
-          orElse: () => voices.first,
-        ),
+      print('===== TOUTES LES VOIX DISPONIBLES =====');
+      for (var voice in voices) {
+        print('Voix: ${voice.name} | Langue: ${voice.lang} | Locale: ${voice.localService}');
+      }
+      print('=======================================');
+      
+      // Chercher spécifiquement Aurélie
+      final aurelieVoice = voices.firstWhere(
+        (v) => v.name?.contains('Aurélie') == true,
+        orElse: () => voices.first, // Si pas trouvée, prend la première
       );
       
-      _currentUtterance!.voice = frenchVoice;
+      print('🎙️ Voix sélectionnée: ${aurelieVoice.name}');
       
-      // Configuration pour voix douce et naturelle
-      _currentUtterance!.rate = 0.85;  // Vitesse (0.8 = un peu plus lent que normal)
-      _currentUtterance!.pitch = 1.0;  // Ton normal
-      _currentUtterance!.volume = 1.0; // Volume max
+      _currentUtterance!.voice = aurelieVoice;
+      _currentUtterance!.rate = 0.85;
+      _currentUtterance!.pitch = 1.0;
+      _currentUtterance!.volume = 1.0;
       
-      print('🎙️ Parle avec voix: ${frenchVoice.name}');
-      
-      // Écouter la fin
       _currentUtterance!.onEnd.listen((_) {
-        print('✅ Voix terminée');
         _isSpeaking = false;
       });
       
-      // Écouter les erreurs
       _currentUtterance!.onError.listen((error) {
         print('❌ Erreur voix: $error');
         _isSpeaking = false;
       });
       
-      // Lancer la synthèse
       html.window.speechSynthesis!.speak(_currentUtterance!);
       
     } catch (e) {
