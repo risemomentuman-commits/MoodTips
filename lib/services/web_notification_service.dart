@@ -96,7 +96,7 @@ class WebNotificationService {
         .from('profiles')
         .update({
           'fcm_token': token,
-          'push_notifications_enabled': true,
+          'notifications_enabled': true,
         })
         .eq('id', userId);
       
@@ -148,7 +148,7 @@ class WebNotificationService {
         // Désactiver : juste mettre le flag à false
         await supabase
           .from('profiles')
-          .update({'push_notifications_enabled': false})
+          .update({'notifications_enabled': false})
           .eq('id', userId);
         
         print('✅ Notifications désactivées');
@@ -166,11 +166,11 @@ class WebNotificationService {
       
       final response = await supabase
         .from('profiles')
-        .select('push_notifications_enabled')
+        .select('notifications_enabled')
         .eq('id', userId)
         .single();
       
-      return response['push_notifications_enabled'] ?? false;
+      return response['notifications_enabled'] ?? false;
       
     } catch (e) {
       print('❌ Erreur areNotificationsEnabled: $e');
