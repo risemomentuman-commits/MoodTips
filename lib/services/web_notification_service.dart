@@ -77,8 +77,10 @@ class WebNotificationService {
       );
       
       if (token == null) {
-        print('❌ Token null');
+        print('❌ TOKEN NULL - Firebase a échoué');
         return;
+      } else {
+        print('✅✅✅ TOKEN REÇU: $token');
       }
       
       print('✅ Token FCM: ${token.substring(0, 20)}...');
@@ -135,14 +137,15 @@ class WebNotificationService {
       if (userId == null) return;
       
       if (enabled) {
-        // Demander permission et sauvegarder token
+        // Activer : demander permission et récupérer token
         final granted = await requestPermission();
         if (!granted) {
           print('❌ Permission refusée');
           return;
         }
+        // Le token est sauvegardé automatiquement dans requestPermission()
       } else {
-        // Désactiver dans la DB
+        // Désactiver : juste mettre le flag à false
         await supabase
           .from('profiles')
           .update({'push_notifications_enabled': false})
@@ -155,7 +158,6 @@ class WebNotificationService {
       print('❌ Erreur setNotificationsEnabled: $e');
     }
   }
-  
   /// Récupérer l'état des notifications
   static Future<bool> areNotificationsEnabled() async {
     try {
