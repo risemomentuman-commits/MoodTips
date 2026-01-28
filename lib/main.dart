@@ -34,9 +34,6 @@ void main() async {
   if (!kIsWeb) {
     tz.initializeTimeZones();
   }
-
-    // Initialiser les notifications
-  await NotificationService.initialize();
   
   runApp(MyApp());
 }
