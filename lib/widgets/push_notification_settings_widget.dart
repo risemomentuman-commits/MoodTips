@@ -39,9 +39,10 @@ class _PushNotificationSettingsWidgetState extends State<PushNotificationSetting
     
     await WebNotificationService.setNotificationsEnabled(value);
     
-     // Mettre à jour l'état directement (pas besoin de recharger depuis la DB)
-     setState(() {
-      _isEnabled = value;
+    // Relire depuis la base pour être sûr
+    final actualValue = await WebNotificationService.areNotificationsEnabled();
+    setState(() {
+      _isEnabled = actualValue;
       _isLoading = false;
     });
     

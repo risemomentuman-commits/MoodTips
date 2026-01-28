@@ -93,6 +93,15 @@
   <link rel="apple-touch-icon" href="icons/Icon-512.png">
 </head>
 <body>
+  <!-- Firebase Messaging Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then((reg) => console.log('✅ Firebase SW registered'))
+        .catch((err) => console.error('❌ Firebase SW failed:', err));
+    }
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
