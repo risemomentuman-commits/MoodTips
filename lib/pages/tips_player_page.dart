@@ -47,10 +47,9 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   @override
   void initState() {
     super.initState();
+    EdgeTtsService.initialize();  // ← AJOUTE CETTE LIGNE
 
     print('🎬 initState appelé');
-
-    EdgeTtsService.initialize();  // ← AJOUTE CETTE LIGNE
 
     print('✅ EdgeTTS initialisé');  // ← AJOUTE
 
