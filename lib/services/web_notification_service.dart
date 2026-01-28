@@ -13,7 +13,7 @@ class WebNotificationService {
 
   // ⚠️ Mets ici TA VAPID Key (Firebase Console -> Cloud Messaging -> Web Push certificates)
   static const String _vapidKey =
-      "v8cT0cAQr62hnfdztbDtLlyV9o-xFcmPmp-LlHHk970"; // ex: "BJcHGTp..."
+      "BJcHGTpf3Rauw9tepfVU6KD2GoLHhqLSiM9k02STWJe07o0o0Y0L6fJK5BazxXC2aq2cWVpt9vWfUWVNoi1uhJk"; // ex: "BJcHGTp..."
 
   // LocalStorage key (pour stocker le token si user pas connecté)
   static const String _lsPendingTokenKey = "pending_fcm_token";
