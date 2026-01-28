@@ -58,7 +58,7 @@ class EdgeTtsService {
   }
   
   /// Parler - Convertir texte en audio
-  sstatic Future<void> speak(String text) async {
+  static Future<void> speak(String text) async {
     if (!kIsWeb) return;
     
     if (!_isInitialized) {
