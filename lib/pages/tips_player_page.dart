@@ -120,7 +120,12 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
     print('🎙️ AVANT speak: $textToSpeak');
     
     setState(() => _isSpeaking = true);
-    await EdgeTtsService.speak(textToSpeak);
+    try {
+      await EdgeTtsService.speak(textToSpeak);
+    } catch (e) {
+    print('Erreur: $e');
+    }
+    setState(() => _isSpeaking = false);  // ← Doit être là !
     print('🗣️ Voix lancée: ${step.title}');
   }
 
