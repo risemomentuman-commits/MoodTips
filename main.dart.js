@@ -29745,8 +29745,8 @@ var $async$GO=A.m(function(c,d){if(c===1){p=d
 s=q}while(true)switch(s){case 0:q=3
 n=t.z
 s=6
-return A.k($.zM().cJ("profiles").bP(0,A.Q(["fcm_token",a,"notifications_enabled",!0],n,n)).dm("id",b),$async$GO)
-case 6:A.ap("\u2705 [DB] notifications_enabled set to TRUE for user="+b)
+return A.k($.zM().cJ("profiles").bP(0,A.Q(["fcm_token",a,"push_notifications_enabled",!0],n,n)).dm("id",b),$async$GO)
+case 6:A.ap("\u2705 [DB] push_notifications_enabled set to TRUE for user="+b)
 A.ap("\u2705 [FCM] Token saved to DB for user="+b)
 q=1
 s=5
@@ -29790,7 +29790,7 @@ break}s=13
 break
 case 14:i=t.z
 s=16
-return A.k(j.cJ("profiles").bP(0,A.Q(["notifications_enabled",!1],i,i)).dm("id",n),$async$y5)
+return A.k(j.cJ("profiles").bP(0,A.Q(["push_notifications_enabled",!1],i,i)).dm("id",n),$async$y5)
 case 16:A.ap("\u2705 [FCM] Notifications disabled in DB")
 case 13:p=2
 s=11
@@ -29816,9 +29816,9 @@ if(n==null){q=!1
 s=1
 break}p=4
 s=7
-return A.k(j.cJ("profiles").hT(0,"notifications_enabled").dm("id",n).kD(0),$async$atV)
+return A.k(j.cJ("profiles").hT(0,"push_notifications_enabled").dm("id",n).kD(0),$async$atV)
 case 7:m=b
-j=J.az(m,"notifications_enabled")
+j=J.az(m,"push_notifications_enabled")
 j=A.nv(j==null?!1:j)
 q=j
 s=1
