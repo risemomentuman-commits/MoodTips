@@ -98817,8 +98817,8 @@ a8(){return new A.KA(A.b([],t.LA),null,null)}}
 A.KA.prototype={
 ao(){var s,r,q=this,p=null
 q.aE()
-A.aF("\ud83c\udfac initState appel\xe9")
 A.aa3()
+A.aF("\ud83c\udfac initState appel\xe9")
 A.aF("\u2705 EdgeTTS initialis\xe9")
 s=q.a.c
 r=s.Q
