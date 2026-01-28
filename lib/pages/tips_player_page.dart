@@ -47,6 +47,13 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   @override
   void initState() {
     super.initState();
+
+    print('🎬 initState appelé');
+
+    EdgeTtsService.initialize();  // ← AJOUTE CETTE LIGNE
+
+    print('✅ EdgeTTS initialisé');  // ← AJOUTE
+
     _initializeSteps();
     _initializeMusic();
     _initializeAnimations();
@@ -109,6 +116,8 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   Future<void> _speakCurrentStep() async {
     final step = _steps[_currentStepIndex];
     String textToSpeak = "${step.title}. ${step.description}";
+
+    print('🎙️ AVANT speak: $textToSpeak');
     
     setState(() => _isSpeaking = true);
     await EdgeTtsService.speak(textToSpeak);
@@ -138,14 +147,10 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
       }
     }
     
-    // ✅ Attendre 500ms puis lancer la voix UNE SEULE FOIS
-    await Future.delayed(Duration(milliseconds: 500));
+    // Lancer la voix automatiquement
+    await _speakCurrentStep();
     
-    if (!_hasSpokenFirstStep) {
-      await _speakCurrentStep();
-      _hasSpokenFirstStep = true;
-    }
-    
+       
     // Démarrer le timer
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (mounted) {
