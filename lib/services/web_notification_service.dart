@@ -18,6 +18,18 @@ class WebNotificationService {
   // LocalStorage key (pour stocker le token si user pas connecté)
   static const String _lsPendingTokenKey = "pending_fcm_token";
 
+  // web only
+  static const _localEnabledKey = 'notifications_enabled_web';
+
+  static void setLocalEnabled(bool value) {
+    html.window.localStorage[_localEnabledKey] = value.toString();
+  }
+
+  static bool getLocalEnabled() {
+    return html.window.localStorage[_localEnabledKey] == 'true';
+  }
+
+
   /// 1) Initialise Firebase (Web only) + prépare FCM
   static Future<void> initialize() async {
     print('🚀 [FCM] WebNotificationService.initialize() called');
@@ -150,6 +162,8 @@ class WebNotificationService {
         'fcm_token': token,
         'notifications_enabled': true,
       }).eq('id', userId);
+      print('✅ [DB] notifications_enabled set to TRUE for user=$userId');
+
 
       print('✅ [FCM] Token saved to DB for user=$userId');
     } catch (e) {
