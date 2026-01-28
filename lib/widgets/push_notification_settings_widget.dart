@@ -39,8 +39,11 @@ class _PushNotificationSettingsWidgetState extends State<PushNotificationSetting
     
     await WebNotificationService.setNotificationsEnabled(value);
     
-    // Recharger l'état
-    await _loadSettings();
+     // Mettre à jour l'état directement (pas besoin de recharger depuis la DB)
+     setState(() {
+      _isEnabled = value;
+      _isLoading = false;
+    });
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
