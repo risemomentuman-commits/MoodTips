@@ -106,6 +106,42 @@
     }
   </script>
 
+  <!-- Firebase JS (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js"></script>
+
+  <script>
+    // Firebase config (mets les mêmes valeurs que dans ton Dart)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCSdZQtz9blpwpXx54EQ4mHudmcGs66QjA",
+      authDomain: "moodtips-f2f0b.firebaseapp.com",
+      projectId: "moodtips-f2f0b",
+      storageBucket: "moodtips-f2f0b.firebasestorage.app",
+      messagingSenderId: "988485491350",
+      appId: "1:988485491350:web:27d494da0d1f32553480b7",
+      measurementId: "G-Y1QG0N5B52"
+    };
+
+    // Init Firebase JS
+    firebase.initializeApp(firebaseConfig);
+    const messaging = firebase.messaging();
+
+    // Expose une fonction globale callable depuis Flutter (Dart)
+    window.getFcmTokenFromWeb = async function(vapidKey) {
+      // Force l’usage du SW du sous-dossier /MoodTips/
+      const reg = await navigator.serviceWorker.getRegistration('/MoodTips/');
+      if (!reg) throw new Error("No service worker registration found for /MoodTips/");
+
+      const token = await messaging.getToken({
+        vapidKey: vapidKey,
+        serviceWorkerRegistration: reg
+      });
+
+      return token; // string ou null
+    }
+  </script>
+
+
 
   <script src="flutter_bootstrap.js" async></script>
 </body>

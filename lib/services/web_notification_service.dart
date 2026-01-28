@@ -6,6 +6,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'fcm_web_js.dart';
+
+
 
 class WebNotificationService {
   static FirebaseMessaging? _messaging;
@@ -118,7 +121,19 @@ class WebNotificationService {
     }
 
     try {
-      final token = await _messaging!.getToken(vapidKey: _vapidKey);
+      // ✅ IMPORTANT: forcer Firebase à utiliser le SW du sous-dossier /MoodTips/
+      final sw = html.window.navigator.serviceWorker;
+      final registration = await sw?.getRegistration('/MoodTips/');
+
+      if (registration == null) {
+        print('❌ [FCM] No SW registration found for /MoodTips/');
+        await _debugServiceWorkerState();
+        return;
+      }
+
+      print('✅ [FCM] Using SW registration scope: ${registration.scope}');
+
+      final token = await getFcmTokenFromWebJs(_vapidKey);
 
       if (token == null) {
         print('❌ [FCM] Token is NULL (getToken failed).');
@@ -148,12 +163,12 @@ class WebNotificationService {
           _storePendingToken(newToken);
         }
       });
-
     } catch (e) {
       print('❌ [FCM] getToken error: $e');
       await _debugServiceWorkerState();
     }
   }
+
 
   /// 4) Sauvegarde DB Supabase
   static Future<void> _saveTokenToDatabase(String token, {required String userId}) async {
