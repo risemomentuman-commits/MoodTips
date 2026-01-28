@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart';
+import '../services/edge_tts_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:async';
 import '../models/tip.dart';
@@ -7,7 +7,7 @@ import '../models/instruction_step.dart';
 import '../utils/app_colors.dart';
 import '../services/supabase_service.dart';
 import '../services/audio_preloader.dart';
-import '../services/tts_service.dart'; 
+ 
 
 class TipsPlayerPage extends StatefulWidget {
   final Tip tip;
@@ -31,7 +31,6 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   bool _isCompleted = false;
   
   // TTS et Audio
-  final FlutterTts _flutterTts = FlutterTts();
   AudioPlayer? _backgroundMusicPlayer;
   bool _isSpeaking = false;
   double _musicVolume = 0.3;
@@ -49,7 +48,6 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   void initState() {
     super.initState();
     _initializeSteps();
-    _initializeTTS();
     _initializeMusic();
     _initializeAnimations();
     _startTime = DateTime.now();
@@ -74,26 +72,7 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
     }
   }
 
-  void _initializeTTS() async {
-    await _flutterTts.setLanguage("fr-FR");
-    await _flutterTts.setSpeechRate(0.40); // ✅ Plus lent (était 0.45)
-    await _flutterTts.setVolume(1.0);
-    await _flutterTts.setPitch(1.15); // ✅ Plus aigu = plus féminin (était 1.0)
-    
-    _flutterTts.setCompletionHandler(() {
-      if (mounted) {
-        setState(() => _isSpeaking = false);
-      }
-    });
-    
-    _flutterTts.setErrorHandler((msg) {
-      print("TTS Error: $msg");
-      if (mounted) {
-        setState(() => _isSpeaking = false);
-      }
-    });
-  }
-
+  
   void _initializeMusic() async {
     try {
       if (widget.tip.backgroundMusic != null && widget.tip.backgroundMusic!.isNotEmpty) {
@@ -132,7 +111,7 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
     String textToSpeak = "${step.title}. ${step.description}";
     
     setState(() => _isSpeaking = true);
-    await _flutterTts.speak(textToSpeak);
+    await EdgeTtsService.speak(textToSpeak);
     print('🗣️ Voix lancée: ${step.title}');
   }
 
@@ -184,7 +163,6 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   void _pauseExercise() {
     setState(() => _isPlaying = false);
     _timer?.cancel();
-    _flutterTts.stop();
     setState(() => _isSpeaking = false);
     _backgroundMusicPlayer?.pause();
   }
@@ -218,8 +196,7 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
 
   void _completeExercise() async {
     _timer?.cancel();
-    _flutterTts.stop();
-    
+        
     // ✅ FADE OUT de la musique sur 2 secondes
     if (_backgroundMusicPlayer != null) {
       await _fadeOutMusic();
@@ -522,7 +499,6 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   @override
   void dispose() {
     _timer?.cancel();
-    _flutterTts.stop();
     _backgroundMusicPlayer?.dispose();
     _breatheController.dispose();
     _progressController.dispose();
