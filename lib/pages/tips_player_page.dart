@@ -142,7 +142,7 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
     setState(() => _isPlaying = true);
 
     // Lancer la voix automatiquement
-    await _speakCurrentStep();
+    _speakCurrentStep();  // Sans await !
     
     // ✅ Lancer la musique AVANT la voix
     if (_backgroundMusicPlayer != null) {
