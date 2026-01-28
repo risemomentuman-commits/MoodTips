@@ -1,6 +1,7 @@
 // lib/services/web_notification_service.dart
-// Service de notifications push Web via Firebase Cloud Messaging
+// Notifications push Web via Firebase Cloud Messaging (FCM) + Supabase
 
+import 'dart:html' as html;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -9,191 +10,261 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class WebNotificationService {
   static FirebaseMessaging? _messaging;
   static final supabase = Supabase.instance.client;
-  
-  /// Initialiser Firebase et demander la permission
+
+  // ⚠️ Mets ici TA VAPID Key (Firebase Console -> Cloud Messaging -> Web Push certificates)
+  static const String _vapidKey =
+      "v8cT0cAQr62hnfdztbDtLlyV9o-xFcmPmp-LlHHk970"; // ex: "BJcHGTp..."
+
+  // LocalStorage key (pour stocker le token si user pas connecté)
+  static const String _lsPendingTokenKey = "pending_fcm_token";
+
+  /// 1) Initialise Firebase (Web only) + prépare FCM
   static Future<void> initialize() async {
+    print('🚀 [FCM] WebNotificationService.initialize() called');
+
     if (!kIsWeb) {
-      print('❌ WebNotificationService: Not on web');
+      print('❌ [FCM] Not on web -> skip');
       return;
     }
-    
+
     try {
-      // ⚠️ REMPLACE PAR TES VRAIES VALEURS FIREBASE
+      // IMPORTANT: ne pas mettre ces clés en public si tu peux éviter
       await Firebase.initializeApp(
-        options: FirebaseOptions(
-           apiKey: "AIzaSyCSdZQtz9blpwpXx54EQ4mHudmcGs66QjA",
-           authDomain: "moodtips-f2f0b.firebaseapp.com",
-           projectId: "moodtips-f2f0b",
-           storageBucket: "moodtips-f2f0b.firebasestorage.app",
-           messagingSenderId: "988485491350",
-           appId: "1:988485491350:web:27d494da0d1f32553480b7",
-           measurementId: "G-Y1QG0N5B52"
+        options: const FirebaseOptions(
+          apiKey: "REPLACE_API_KEY",
+          authDomain: "REPLACE_AUTH_DOMAIN",
+          projectId: "REPLACE_PROJECT_ID",
+          storageBucket: "REPLACE_STORAGE_BUCKET",
+          messagingSenderId: "REPLACE_SENDER_ID",
+          appId: "REPLACE_APP_ID",
+          measurementId: "REPLACE_MEASUREMENT_ID",
         ),
       );
-      
+
       _messaging = FirebaseMessaging.instance;
-      
-      print('✅ Firebase initialisé pour Web');
-      
+
+      // (Optionnel) Réduit les surprises: auto-init FCM
+      await _messaging!.setAutoInitEnabled(true);
+
+      print('✅ [FCM] Firebase initialized for Web');
+
+      // Setup listeners (n’affecte pas la génération du token)
+      setupListeners();
+
+      // Si un token était en attente (user pas connecté), tente de sync
+      await syncPendingTokenIfAny();
+
     } catch (e) {
-      print('❌ Erreur initialisation Firebase: $e');
+      print('❌ [FCM] Firebase initialize error: $e');
     }
   }
-  
-  /// Demander la permission pour les notifications
-  static Future<bool> requestPermission() async {
-    if (!kIsWeb || _messaging == null) return false;
-    
+
+  /// 2) Demande la permission navigateur et récupère le token
+  static Future<bool> requestPermissionAndRegisterToken() async {
+    print('🚀 [FCM] requestPermissionAndRegisterToken() called');
+
+    if (!kIsWeb || _messaging == null) {
+      print('❌ [FCM] Not ready (web=${kIsWeb}, messaging=${_messaging != null})');
+      return false;
+    }
+
     try {
-      NotificationSettings settings = await _messaging!.requestPermission(
+      final settings = await _messaging!.requestPermission(
         alert: true,
         badge: true,
         sound: true,
       );
-      
+
+      print('🔔 [FCM] Permission status: ${settings.authorizationStatus}');
+
       final granted = settings.authorizationStatus == AuthorizationStatus.authorized;
-      
-      if (granted) {
-        print('✅ Permission notifications accordée');
-        await _getAndSaveToken();
-      } else {
-        print('❌ Permission notifications refusée');
+
+      if (!granted) {
+        print('❌ [FCM] Permission denied (or not authorized).');
+        return false;
       }
-      
-      return granted;
-      
+
+      await _getAndStoreToken();
+
+      return true;
     } catch (e) {
-      print('❌ Erreur demande permission: $e');
+      print('❌ [FCM] Permission request error: $e');
       return false;
     }
   }
-  
-  /// Récupérer le token FCM et le sauvegarder en DB
-  static Future<void> _getAndSaveToken() async {
+
+  /// 3) Récupère le token FCM (Web) et l’enregistre
+  static Future<void> _getAndStoreToken() async {
+    if (!kIsWeb || _messaging == null) return;
+
+    if (_vapidKey.startsWith("REMPLACE_")) {
+      print('❌ [FCM] VAPID KEY missing. Set _vapidKey first.');
+      return;
+    }
+
     try {
-      // ⚠️ REMPLACE PAR TA VRAIE VAPID KEY
-      final token = await _messaging!.getToken(
-        vapidKey: "BJcHGTpf3Rauw9tepfVU6KD2GoLHhqLSiM9k02STWJe07o0o0Y0L6fJK5BazxXC2aq2cWVpt9vWfUWVNoi1uhJk",
-      );
-      
+      final token = await _messaging!.getToken(vapidKey: _vapidKey);
+
       if (token == null) {
-        print('❌ TOKEN NULL - Firebase a échoué');
+        print('❌ [FCM] Token is NULL (getToken failed).');
+        await _debugServiceWorkerState();
         return;
-      } else {
-        print('✅✅✅ TOKEN REÇU: $token');
       }
-      
-      print('✅ Token FCM: ${token.substring(0, 20)}...');
-      
-      // Sauvegarder en base de données
+
+      print('✅ [FCM] TOKEN RECEIVED: ${token.substring(0, 20)}...');
+
+      // Sauvegarde immédiate en DB si user connecté
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) {
-        print('❌ User non connecté');
+        print('⚠️ [FCM] User not logged in. Storing token in localStorage.');
+        _storePendingToken(token);
         return;
       }
-      
-      await supabase
-        .from('profiles')
-        .update({
-          'fcm_token': token,
-          'notifications_enabled': true,
-        })
-        .eq('id', userId);
-      
-      print('✅ Token sauvegardé en DB');
-      
-      // Écouter le refresh du token
-      _messaging!.onTokenRefresh.listen((newToken) {
-        _saveTokenToDatabase(newToken);
-      });
-      
-    } catch (e) {
-      print('❌ Erreur get token: $e');
-    }
-  }
-  
-  /// Sauvegarder le token en DB
-  static Future<void> _saveTokenToDatabase(String token) async {
-    try {
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) return;
-      
-      await supabase
-        .from('profiles')
-        .update({'fcm_token': token})
-        .eq('id', userId);
-        
-      print('✅ Token mis à jour en DB');
-      
-    } catch (e) {
-      print('❌ Erreur save token: $e');
-    }
-  }
-  
-  /// Activer/désactiver les notifications
-  static Future<void> setNotificationsEnabled(bool enabled) async {
-    try {
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) return;
-      
-      if (enabled) {
-        // Activer : demander permission et récupérer token
-        final granted = await requestPermission();
-        if (!granted) {
-          print('❌ Permission refusée');
-          return;
+
+      await _saveTokenToDatabase(token, userId: userId);
+
+      // Écouter refresh token
+      _messaging!.onTokenRefresh.listen((newToken) async {
+        print('🔁 [FCM] Token refreshed: ${newToken.substring(0, 20)}...');
+        final uid = supabase.auth.currentUser?.id;
+        if (uid != null) {
+          await _saveTokenToDatabase(newToken, userId: uid);
+        } else {
+          _storePendingToken(newToken);
         }
-        // Le token est sauvegardé automatiquement dans requestPermission()
-      } else {
-        // Désactiver : juste mettre le flag à false
-        await supabase
-          .from('profiles')
-          .update({'notifications_enabled': false})
-          .eq('id', userId);
-        
-        print('✅ Notifications désactivées');
-      }
-      
+      });
+
     } catch (e) {
-      print('❌ Erreur setNotificationsEnabled: $e');
+      print('❌ [FCM] getToken error: $e');
+      await _debugServiceWorkerState();
     }
   }
-  /// Récupérer l'état des notifications
-  static Future<bool> areNotificationsEnabled() async {
+
+  /// 4) Sauvegarde DB Supabase
+  static Future<void> _saveTokenToDatabase(String token, {required String userId}) async {
     try {
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) return false;
-      
-      final response = await supabase
-        .from('profiles')
-        .select('notifications_enabled')
-        .eq('id', userId)
-        .single();
-      
-      return response['notifications_enabled'] ?? false;
-      
+      await supabase.from('profiles').update({
+        'fcm_token': token,
+        'notifications_enabled': true,
+      }).eq('id', userId);
+
+      print('✅ [FCM] Token saved to DB for user=$userId');
     } catch (e) {
-      print('❌ Erreur areNotificationsEnabled: $e');
+      print('❌ [FCM] DB save error: $e');
+      // conserve aussi en local au cas où
+      _storePendingToken(token);
+    }
+  }
+
+  /// 5) Active / désactive les notifications côté DB
+  static Future<void> setNotificationsEnabled(bool enabled) async {
+    if (!kIsWeb) return;
+
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) {
+      print('⚠️ [FCM] setNotificationsEnabled: user not logged in');
+      if (enabled) {
+        // on peut quand même demander la permission et obtenir le token
+        await requestPermissionAndRegisterToken();
+      }
+      return;
+    }
+
+    try {
+      if (enabled) {
+        final granted = await requestPermissionAndRegisterToken();
+        if (!granted) return;
+        // La DB sera mise à jour dans _saveTokenToDatabase
+      } else {
+        await supabase.from('profiles').update({
+          'notifications_enabled': false,
+        }).eq('id', userId);
+
+        print('✅ [FCM] Notifications disabled in DB');
+      }
+    } catch (e) {
+      print('❌ [FCM] setNotificationsEnabled error: $e');
+    }
+  }
+
+  /// 6) Lire l’état des notifs depuis DB
+  static Future<bool> areNotificationsEnabled() async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return false;
+
+    try {
+      final row = await supabase
+          .from('profiles')
+          .select('notifications_enabled')
+          .eq('id', userId)
+          .single();
+
+      return (row['notifications_enabled'] ?? false) as bool;
+    } catch (e) {
+      print('❌ [FCM] areNotificationsEnabled error: $e');
       return false;
     }
   }
-  
-  /// Setup des listeners pour les messages
+
+  /// 7) Listeners FCM (foreground + click)
   static void setupListeners() {
     if (!kIsWeb || _messaging == null) return;
-    
-    // Messages reçus quand l'app est au premier plan
+
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('📱 Message reçu (app active): ${message.notification?.title}');
-      
-      // Tu peux afficher une notif in-app ici si tu veux
+      print('📩 [FCM] Foreground message: ${message.notification?.title}');
+      // Ici tu peux afficher un toast/in-app banner si tu veux
     });
-    
-    // Messages reçus quand on click sur la notif
+
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('📱 Notif cliquée: ${message.notification?.title}');
-      
-      // Navigation vers la bonne page si besoin
+      print('🖱️ [FCM] Notification clicked: ${message.notification?.title}');
+      // Ici tu peux router vers une page spécifique
     });
+  }
+
+  /// 8) Stocke token en attente (user pas connecté)
+  static void _storePendingToken(String token) {
+    try {
+      html.window.localStorage[_lsPendingTokenKey] = token;
+      print('🧾 [FCM] Token stored in localStorage as pending.');
+    } catch (e) {
+      print('❌ [FCM] localStorage write error: $e');
+    }
+  }
+
+  /// 9) Sync token pending si user vient de se connecter
+  static Future<void> syncPendingTokenIfAny() async {
+    if (!kIsWeb) return;
+
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      final pending = html.window.localStorage[_lsPendingTokenKey];
+      if (pending == null || pending.isEmpty) return;
+
+      print('🔄 [FCM] Syncing pending token to DB...');
+      await _saveTokenToDatabase(pending, userId: userId);
+
+      html.window.localStorage.remove(_lsPendingTokenKey);
+      print('✅ [FCM] Pending token synced and cleared.');
+    } catch (e) {
+      print('❌ [FCM] syncPendingTokenIfAny error: $e');
+    }
+  }
+
+  /// 10) Debug service worker registration (utile si token null)
+  static Future<void> _debugServiceWorkerState() async {
+    if (!kIsWeb) return;
+    try {
+      final regs = await html.window.navigator.serviceWorker?.getRegistrations();
+      print('🛠️ [FCM] SW registrations count: ${regs?.length ?? 0}');
+      if (regs != null) {
+        for (final r in regs) {
+          print('🛠️ [FCM] SW scope: ${r.scope}');
+        }
+      }
+    } catch (e) {
+      print('❌ [FCM] SW debug error: $e');
+    }
   }
 }
