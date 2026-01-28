@@ -27,21 +27,20 @@ class _PushNotificationSettingsWidgetState extends State<PushNotificationSetting
       return;
     }
 
-    // 1) Source de vérité = navigateur
-    final localEnabled = WebNotificationService.getLocalEnabled();
+    setState(() => _isLoading = true);
+
+    // 1) Lire la DB (source de vérité)
+    final dbEnabled = await WebNotificationService.areNotificationsEnabled();
+
+    // 2) Mettre à jour aussi le local (pour cohérence)
+    WebNotificationService.setLocalEnabled(dbEnabled);
 
     setState(() {
-      _isEnabled = localEnabled;
+      _isEnabled = dbEnabled;
       _isLoading = false;
     });
-
-    // 2) DB = sync silencieuse (optionnelle)
-    final dbEnabled = await WebNotificationService.areNotificationsEnabled();
-    if (dbEnabled != localEnabled) {
-      // juste pour info/debug, pas pour forcer l’UI
-      print('ℹ️ DB != local (db=$dbEnabled / local=$localEnabled)');
-    }
   }
+
 
   
   Future<void> _toggleNotifications(bool value) async {
