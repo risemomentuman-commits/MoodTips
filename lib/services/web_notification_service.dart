@@ -175,9 +175,9 @@ class WebNotificationService {
     try {
       await supabase.from('profiles').update({
         'fcm_token': token,
-        'notifications_enabled': true,
+        'push_notifications_enabled': true,
       }).eq('id', userId);
-      print('✅ [DB] notifications_enabled set to TRUE for user=$userId');
+      print('✅ [DB] push_notifications_enabled set to TRUE for user=$userId');
 
 
       print('✅ [FCM] Token saved to DB for user=$userId');
@@ -209,7 +209,7 @@ class WebNotificationService {
         // La DB sera mise à jour dans _saveTokenToDatabase
       } else {
         await supabase.from('profiles').update({
-          'notifications_enabled': false,
+          'push_notifications_enabled': false,
         }).eq('id', userId);
 
         print('✅ [FCM] Notifications disabled in DB');
@@ -227,11 +227,11 @@ class WebNotificationService {
     try {
       final row = await supabase
           .from('profiles')
-          .select('notifications_enabled')
+          .select('push_notifications_enabled')
           .eq('id', userId)
           .single();
 
-      return (row['notifications_enabled'] ?? false) as bool;
+      return (row['push_notifications_enabled'] ?? false) as bool;
     } catch (e) {
       print('❌ [FCM] areNotificationsEnabled error: $e');
       return false;
