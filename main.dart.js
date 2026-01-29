@@ -96598,7 +96598,7 @@ g=m.c
 if(g==null){n=[1]
 s=5
 break}f=t.X
-if(j)A.rW(g,"/welcome",null,f,f)
+if(j)A.rW(g,"/mood-check",null,f,f)
 else A.rW(g,"/onboarding",null,f,f)
 s=9
 break
@@ -96753,7 +96753,7 @@ case 9:i=m.c
 if(i==null){n=[1]
 s=5
 break}h=t.X
-A.rW(i,"/welcome",null,h,h)
+A.rW(i,"/mood-check",null,h,h)
 s=13
 return A.k(A.i4(A.bl(0,0,500,0),null,t.z),$async$oH)
 case 13:i=m.c
