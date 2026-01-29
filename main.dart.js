@@ -97394,7 +97394,7 @@ k.push(A.a6(m,A.aN(A.b([A.aN(A.b([q,p,A.aK(A.b([s,A.x(o,m,m,m,A.T(m,m,B.F,m,m,m,
 k.push(A.w(m,10,m))
 l=n.r?"S\xe9lectionne ton \xe9motion et c'est tout !":"Fais tourner la roue et s\xe9lectionne"
 k.push(A.x(l,m,m,m,A.T(m,m,B.F,m,m,m,m,m,m,m,m,16,m,m,m,m,m,!0,m,m,m,m,m,m,m,m),m,m,m))
-k.push(A.w(m,20,m))
+k.push(A.w(m,6,m))
 k.push(A.vZ(new A.aBH(n),n.d,t.ox))
 k.push(A.w(m,24,m))
 k.push(A.a6(m,A.aQZ(A.al(B.Je,m,m,20),A.x("Feedback Test MoodTips",m,m,m,m,m,m,m),new A.aBI(a),A.em(m,m,B.b3,m,m,m,m,m,m,B.f,m,m,new A.G(16,12,16,12),m,new A.bu(A.af(12),B.t),m,m,m,m)),B.i,m,m,m,m,m,m,new A.G(32,0,32,0),m,m,m,m))
