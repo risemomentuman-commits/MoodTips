@@ -139,7 +139,6 @@ class _AuthPageState extends State<AuthPage> {
                     height: 120,
                     width: 120,
                     margin: EdgeInsets.only(bottom: 32),
-                    borderRadius: BorderRadius.circular(16),
                     child: Image.asset(
                       'assets/images/logo.png',
                       fit: BoxFit.contain,
