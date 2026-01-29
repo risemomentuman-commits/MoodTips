@@ -110,13 +110,13 @@ class WelcomePage extends StatelessWidget {
                         Navigator.pushReplacementNamed(context, AppRoutes.moodCheck);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: Colors.transparent,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
                         elevation: 8,
-                        shadowColor: AppColors.primary.withOpacity(0.4),
+                        shadowColor: Colors.transparent,
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
