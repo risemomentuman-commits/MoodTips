@@ -100,6 +100,11 @@ class WelcomePage extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     height: 56,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.streakGradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: AppColors.buttonShadow,
+                    ),
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.pushReplacementNamed(context, AppRoutes.moodCheck);

@@ -188,6 +188,16 @@ class AppColors {
       Color(0xFFC19A6B),  // Terre
     ],
   );
+
+  /// Dégradé streak (vert sauge → beige doré) - Comme sur la capture
+  static const LinearGradient streakGradient = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [
+      Color(0xFF8B9D8B), // Vert sauge
+      Color(0xFFB8A888), // Beige doré
+    ],
+  );
   
   // ========== ALIASES DE COMPATIBILITÉ ==========
   
