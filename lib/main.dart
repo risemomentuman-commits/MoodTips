@@ -122,7 +122,7 @@ class MyApp extends StatelessWidget {
             case AppStartDestination.onboarding:
               return OnboardingSlidesPage();
             case AppStartDestination.home:
-              return WelcomePage();
+              return MoodCheckPage();
           }
         },
       ),
@@ -131,7 +131,7 @@ class MyApp extends StatelessWidget {
       
       // ✅ GESTION DES ROUTES DYNAMIQUES (redirections email, etc.)
       onGenerateRoute: (settings) {
-        if (settings.name == '/welcome' || settings.name == '/auth/callback' || settings.name == '/email-confirmed') {
+        if (settings.name == '/moodCheck' || settings.name == '/auth/callback' || settings.name == '/email-confirmed') {
           return MaterialPageRoute(
             builder: (_) => Scaffold(
               backgroundColor: AppColors.backgroundPrimary,
