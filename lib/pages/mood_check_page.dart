@@ -394,6 +394,26 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                 ),
                 
                 SizedBox(height: 24),
+
+                // Aide au sommeil
+                Widget _buildSleepLink() {
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: 24),
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, AppRoutes.sleep);
+                      },
+                      child: Text(
+                        "Aide au sommeil 🌙",
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 16,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  );
+                }
                 
                 // Bouton Feedback
                 Container(
@@ -463,25 +483,6 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
           textAlign: TextAlign.center,
         ),
       ],
-    );
-  }
-  
-  Widget _buildSleepLink() {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 24),
-      child: TextButton(
-        onPressed: () {
-          Navigator.pushNamed(context, AppRoutes.sleep);
-        },
-        child: Text(
-          "Aide au sommeil 🌙",
-          style: TextStyle(
-            color: AppColors.primary,
-            fontSize: 16,
-            decoration: TextDecoration.underline,
-          ),
-        ),
-      ),
     );
   }
 }
