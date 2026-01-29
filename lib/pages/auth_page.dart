@@ -140,7 +140,7 @@ class _AuthPageState extends State<AuthPage> {
                     width: 120,
                     margin: EdgeInsets.only(bottom: 32),
                     child: Image.asset(
-                      'web/icons/Icon-512.png',  // ← Remplace par le bon chemin
+                      'assets/images/logo.png',
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -234,12 +234,17 @@ class _AuthPageState extends State<AuthPage> {
                   SizedBox(height: 24),
 
                   // Bouton Se connecter
-                  SizedBox(
+                  Container(
                     height: 56,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.streakGradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: AppColors.buttonShadow,
+                    ),
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _signIn,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: Colors.transparent,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -288,8 +293,13 @@ class _AuthPageState extends State<AuthPage> {
                   SizedBox(height: 24),
 
                   // Bouton Créer un compte
-                  SizedBox(
+                  Container(
                     height: 56,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.streakGradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: AppColors.buttonShadow,
+                    ),
                     child: OutlinedButton(
                       onPressed: _isLoading
                           ? null
@@ -299,15 +309,13 @@ class _AuthPageState extends State<AuthPage> {
                                 AppRoutes.createAccount,
                               );
                             },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: BorderSide(
-                          color: AppColors.primary,
-                          width: 2,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+          
                       ),
                       child: Text(
                         'Créer un compte',
