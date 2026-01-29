@@ -134,18 +134,14 @@ class _AuthPageState extends State<AuthPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo / Illustration
+                  // Logo 
                   Container(
                     height: 120,
+                    width: 120,
                     margin: EdgeInsets.only(bottom: 32),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.self_improvement,
-                      size: 64,
-                      color: AppColors.primary,
+                    child: Image.asset(
+                      'web/icons/Icon-512.png',  // ← Remplace par le bon chemin
+                      fit: BoxFit.contain,
                     ),
                   ),
 
