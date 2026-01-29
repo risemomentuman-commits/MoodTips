@@ -361,7 +361,7 @@ class _ConsentPageState extends State<ConsentPage> {
       if (!mounted) return;
 
       // 6. Navigation vers la page principale
-      Navigator.pushReplacementNamed(context, AppRoutes.welcome);
+      Navigator.pushReplacementNamed(context, AppRoutes.moodCheck);
 
       // 7. Message de bienvenue
       await Future.delayed(Duration(milliseconds: 500));

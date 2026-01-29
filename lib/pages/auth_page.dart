@@ -76,7 +76,7 @@ class _AuthPageState extends State<AuthPage> {
         
         if (onboardingCompleted) {
           // Onboarding terminé -> aller à welcome
-          Navigator.pushReplacementNamed(context, AppRoutes.welcome);
+          Navigator.pushReplacementNamed(context, AppRoutes.moodCheck);
         } else {
           // Onboarding pas encore fait -> aller à onboarding
           Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
