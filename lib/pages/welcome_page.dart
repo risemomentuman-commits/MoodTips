@@ -97,7 +97,7 @@ class WelcomePage extends StatelessWidget {
                   Spacer(flex: 2),
 
                   // Bouton Continuer
-                  SizedBox(
+                  Container(
                     width: double.infinity,
                     height: 56,
                     decoration: BoxDecoration(
