@@ -47,5 +47,6 @@ flutter:
     - assets/audio/forest.mp3
     - assets/audio/whitenoise.mp3
     - assets/audio/piano.mp3
+    - assets/images/logo.png
 
     
