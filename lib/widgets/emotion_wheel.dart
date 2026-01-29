@@ -256,8 +256,7 @@ class _EmotionWheelState extends State<EmotionWheel>
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        AppColors.primary.withOpacity(0.05),
-                        AppColors.secondary.withOpacity(0.1),
+                        AppColors.streakGradient,
                       ],
                     ),
                     border: Border.all(
