@@ -317,7 +317,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   ),
                 ),
 
-                SizedBox(height: 40),
+                SizedBox(height: 20),
 
                 // Roue des émotions
                 FutureBuilder<List<Emotion>>(
