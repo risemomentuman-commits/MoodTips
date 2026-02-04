@@ -210,6 +210,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
                         const SizedBox(height: 20),
 
+                        BadgesSummaryWidget(),
+
                         // Insights contexte
                         if (_contextInsights != null && (_contextInsights!['total'] as int) > 0)
                           _buildContextInsights(),
@@ -554,9 +556,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // 🆕 Widget badges (temporairement commenté)
-  BadgesSummaryWidget(),
-
+  
   Widget _buildStatCard({
     required IconData icon,
     required String value,
