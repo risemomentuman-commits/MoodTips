@@ -172,8 +172,7 @@ class _DashboardPageState extends State<DashboardPage> {
                               ),
                             ),
 
-                            // 🆕 Widget badges (temporairement commenté)
-                            BadgesSummaryWidget(),
+                            
 
                             // Sélecteur période
                             Container(
@@ -554,6 +553,9 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
+
+  // 🆕 Widget badges (temporairement commenté)
+  BadgesSummaryWidget(),
 
   Widget _buildStatCard({
     required IconData icon,
