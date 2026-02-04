@@ -97996,7 +97996,7 @@ return q.aau(p,s,o.b,r,b)},
 $S:111}
 A.mG.prototype={
 a8(){var s=t.N,r=t.z
-return new A.J7(A.b4t(),A.b([A.Q(["icon",B.JX,"title","Chaque jour, dis-nous\ncomment tu te sens","description","Un simple check-in quotidien pour prendre soin de toi","color",B.nX],s,r),A.Q(["icon",B.ed,"title","Re\xe7ois des tips\nadapt\xe9s \xe0 ton \xe9tat","description","Respiration, mouvement et mindfulness personnalis\xe9s","color",B.e],s,r),A.Q(["icon",B.JY,"title","Suis ton \xe9volution\nau fil du temps","description","Statistiques et insights sur ton bien-\xeatre","color",B.ak],s,r),A.Q(["icon",B.JI,"title","C'est parti ! \ud83c\udf89","description","Configure ton exp\xe9rience en quelques \xe9tapes","color",B.A],s,r)],t.H7))}}
+return new A.J7(A.b4t(),A.b([A.Q(["icon",B.JX,"title","Chaque jour, dis-moi\ncomment tu te sens","description","Un simple check-in quotidien pour prendre soin de toi","color",B.nX],s,r),A.Q(["icon",B.ed,"title","Re\xe7ois des tips\nadapt\xe9s \xe0 ton \xe9tat","description","Respiration, mouvement et mindfulness personnalis\xe9s","color",B.e],s,r),A.Q(["icon",B.JY,"title","Suis ton \xe9volution\nau fil du temps","description","Statistiques et insights sur ton bien-\xeatre","color",B.ak],s,r),A.Q(["icon",B.JI,"title","C'est parti ! \ud83c\udf89","description","Configure ton exp\xe9rience en quelques \xe9tapes","color",B.A],s,r)],t.H7))}}
 A.J7.prototype={
 Id(){var s=0,r=A.q(t.H),q,p=[],o=this,n,m,l,k
 var $async$Id=A.m(function(a,b){if(a===1)return A.n(b,r)
@@ -99221,11 +99221,11 @@ o=a0.aaD(a2)
 n=A.w(a1,40,a1)
 m=t.p
 s=A.aK(A.b([A.aLb(A.af(10),new A.Dh(8,r/s,A.B(B.c.P(76.5),B.f.gi(0)>>>16&255,B.f.gi(0)>>>8&255,B.f.gi(0)&255),a1,new A.jx(B.f,t.ZU),a1,a1,a1),B.bK),A.w(a1,12,a1),A.x("\xc9tape "+(a0.d+1)+" sur "+a0.ay.length,a1,a1,a1,A.T(a1,a1,B.f,a1,a1,a1,a1,a1,a1,a1,a1,14,a1,a1,B.a0,a1,a1,!0,a1,a1,a1,a1,a1,a1,a1,a1),a1,a1,a1)],m),B.p,B.m,B.l)
-r=A.w(a1,40,a1)
+r=A.w(a1,20,a1)
 l=a0.aas(a2)
 k=A.w(a1,40,a1)
 j=a0.aaE(q,a2)
-i=A.w(a1,60,a1)
+i=A.w(a1,40,a1)
 h=a0.e
 g=B.j.cc(h,60)
 f=B.j.bl(h,60)
@@ -99473,7 +99473,7 @@ if(s.gae(n))return A.cc(new A.b1(new A.G(32,32,32,32),A.aK(A.b([A.al(B.Jw,B.F,g,
 m=s.j1(n,3).e8(0)
 l=s.gt(n)>3?s.hv(n,3).e8(0):A.b([],t.dp)
 s=t.p
-r=A.aK(A.b([A.x("Nos recommandations pour vous",g,g,g,A.T(g,g,B.v,g,g,g,g,g,g,g,g,22,g,g,B.u,g,g,!0,g,g,g,g,g,g,g,g),B.az,g,g),A.w(g,8,g),A.x("Commencez par l'un de ces exercices",g,g,g,A.T(g,g,B.F,g,g,g,g,g,g,g,g,16,g,g,g,g,g,!0,g,g,g,g,g,g,g,g),g,g,g)],s),B.p,B.m,B.l)
+r=A.aK(A.b([A.x("Mes recommandations pour toi",g,g,g,A.T(g,g,B.v,g,g,g,g,g,g,g,g,22,g,g,B.u,g,g,!0,g,g,g,g,g,g,g,g),B.az,g,g),A.w(g,8,g),A.x("Commence par l'un de ces exercices",g,g,g,A.T(g,g,B.F,g,g,g,g,g,g,g,g,16,g,g,g,g,g,!0,g,g,g,g,g,g,g,g),g,g,g)],s),B.p,B.m,B.l)
 q=new A.id(m,A.a4(m).j("id<1>"))
 p=this.a
 o=t.l7
