@@ -6,6 +6,7 @@ import '../utils/app_routes.dart';
 import '../services/notification_service.dart';
 import '../services/supabase_service.dart';
 import 'welcome_page.dart';
+import '../services/web_notification_service.dart';
 
 class ConsentPage extends StatefulWidget {
   const ConsentPage({Key? key}) : super(key: key);
@@ -76,18 +77,26 @@ class _ConsentPageState extends State<ConsentPage> {
                     SizedBox(height: 40),
                     
                     // Option Notifications
+                    // Option Notifications
                     _buildConsentCard(
                       icon: Icons.notifications_outlined,
                       title: 'Notifications',
                       description: 'Reçois des rappels bienveillants pour prendre soin de toi au quotidien',
                       value: _notificationsEnabled,
-                      onChanged: (value) {
-                        setState(() => _notificationsEnabled = value);
+                      onChanged: (value) async {
+                        if (value) {
+                          await WebNotificationService.setNotificationsEnabled(true);
+                          final enabled = await WebNotificationService.areNotificationsEnabled();
+                          setState(() => _notificationsEnabled = enabled);
+                        } else {
+                          await WebNotificationService.setNotificationsEnabled(false);
+                          setState(() => _notificationsEnabled = false);
+                        }
                       },
                       isRequired: false,
                     ),
                     SizedBox(height: 16),
-                    
+
                     // Option Données
                     _buildConsentCard(
                       icon: Icons.shield_outlined,
