@@ -12,6 +12,7 @@ import 'services/audio_preloader.dart';
 import 'pages/welcome_page.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'services/web_notification_service.dart';
+import 'pages/badges_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -127,7 +128,10 @@ class MyApp extends StatelessWidget {
         },
       ),
       
-      routes: AppRoutes.getRoutes(),
+      routes: {
+        ...AppRoutes.getRoutes(),
+        '/badges': (context) => BadgesPage(),
+      },
       
       // ✅ GESTION DES ROUTES DYNAMIQUES (redirections email, etc.)
       onGenerateRoute: (settings) {

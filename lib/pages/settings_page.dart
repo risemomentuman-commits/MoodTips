@@ -227,6 +227,14 @@ class SettingsPage extends StatelessWidget {
                     Navigator.pushNamed(context, AppRoutes.profile);
                   },
                 ),
+
+                ListTile(
+                  leading: Icon(Icons.emoji_events, color: AppColors.primary),
+                  title: Text('Mes Badges'),
+                  subtitle: Text('Consulte tes succès'),
+                  trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () => Navigator.pushNamed(context, '/badges'),
+                ),
                 
                 PushNotificationSettingsWidget(),
 

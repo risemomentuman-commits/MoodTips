@@ -9,6 +9,8 @@ import '../widgets/emotion_wheel.dart';
 import '../widgets/emotion_alert_widget.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/badge_service.dart';
+import '../widgets/badge_unlock_dialog.dart';
 
 class MoodCheckPage extends StatefulWidget {
   @override
@@ -45,7 +47,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
     return AppColors.emotions[emotionName.toLowerCase()] ?? AppColors.primary;
   }
 
-  void _showExpressSuccess(String emotionName) {
+  Future<void> _showExpressSuccess(String emotionName) async {
     HapticFeedback.heavyImpact();
     
     ScaffoldMessenger.of(context).showSnackBar(
@@ -70,6 +72,19 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
         ),
       ),
     );
+    // Vérifier nouveaux badges
+    final newBadges = await BadgeService.checkAndUnlockBadges();
+    
+    // Afficher animation pour chaque nouveau badge
+    for (var badge in newBadges) {
+      if (mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => BadgeUnlockDialog(badge: badge),
+        );
+      }
+    }
     
     // Recharger le profil ET l'analyse
     setState(() {
@@ -377,6 +392,20 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                               ),
                             );
                             return;
+                          }
+
+                          // ✅ NOUVEAU : Vérifier nouveaux badges
+                          final newBadges = await BadgeService.checkAndUnlockBadges();
+
+                          // Afficher animation pour chaque nouveau badge
+                          for (var badge in newBadges) {
+                            if (mounted) {
+                              await showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => BadgeUnlockDialog(badge: badge),
+                              );
+                            }
                           }
                           
                           Navigator.pushNamed(
