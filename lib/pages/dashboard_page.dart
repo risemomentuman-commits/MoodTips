@@ -173,7 +173,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
 
                             // 🆕 Widget badges (temporairement commenté)
-                            // BadgesSummaryWidget(),
+                            BadgesSummaryWidget(),
 
                             // Sélecteur période
                             Container(
