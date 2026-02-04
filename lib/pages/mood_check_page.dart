@@ -250,7 +250,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   margin: EdgeInsets.symmetric(horizontal: 20),
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    gradient: AppColors.streakGradient,
+                    color: Colors.white.withOpacity(0.9),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
@@ -305,7 +305,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   ),
                 ),
 
-                SizedBox(height: 10),
+                SizedBox(height: 5),
 
                 Text(
                   _isExpressMode 
@@ -317,7 +317,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   ),
                 ),
 
-                SizedBox(height: 6),
+                SizedBox(height: 2),
 
                 // Roue des émotions
                 FutureBuilder<List<Emotion>>(
@@ -393,7 +393,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   },
                 ),
                 
-                SizedBox(height: 24),
+                SizedBox(height: 10),
                 
                 // Bouton Feedback
                 Container(
@@ -422,7 +422,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   ),
                 ),
                 
-                SizedBox(height: 16),
+                SizedBox(height: 10),
                 
                 _buildSleepLink(),
                 
