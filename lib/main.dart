@@ -131,6 +131,7 @@ class MyApp extends StatelessWidget {
       routes: {
         ...AppRoutes.getRoutes(),
         '/badges': (context) => BadgesPage(),
+        '/moodCheck': (context) => MoodCheckPage(),  // ← Ajoute ça
       },
       
       // ✅ GESTION DES ROUTES DYNAMIQUES (redirections email, etc.)
