@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import '../services/supabase_service.dart';
 import '../utils/app_colors.dart';
 import '../models/user_profile.dart';
@@ -40,6 +39,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _contextInsights = contexts;
       });
     } catch (e) {
+      // ignore: avoid_print
       print('Erreur chargement dashboard: $e');
     } finally {
       setState(() => _isLoading = false);
@@ -54,19 +54,63 @@ class _DashboardPageState extends State<DashboardPage> {
 
   String get _moodTrend {
     if (_recentMoods.length < 2) return '→';
-    final recent = _recentMoods.take(3).fold(0.0, (s, l) => s + l.emotionId) / 3;
-    final old = _recentMoods.skip(3).take(3).fold(0.0, (s, l) => s + l.emotionId) / 3;
+
+    // ⚠️ on évite le /3 si on n'a pas assez de points
+    final recentSlice = _recentMoods.take(3).toList();
+    final oldSlice = _recentMoods.skip(3).take(3).toList();
+
+    final recent = recentSlice.isEmpty
+        ? 0.0
+        : recentSlice.fold(0.0, (s, l) => s + l.emotionId) / recentSlice.length;
+
+    final old = oldSlice.isEmpty
+        ? recent
+        : oldSlice.fold(0.0, (s, l) => s + l.emotionId) / oldSlice.length;
+
     if (recent > old) return '↗️';
     if (recent < old) return '↘️';
     return '→';
   }
 
-  // ✅ NOUVEAU : Helper pour récupérer les catégories
+  // Helper catégories
   List<String> get _userCategories {
     if (_profile?.preferences == null) return [];
     final categories = _profile!.preferences!['categories'];
     if (categories == null) return [];
     return List<String>.from(categories);
+  }
+
+  // ========= STYLE PANEL (harmonisation globale) =========
+  Widget _panel({
+    required Widget child,
+    EdgeInsets padding = const EdgeInsets.all(20),
+  }) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            AppColors.primary.withOpacity(0.04),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.primary.withOpacity(0.18),
+          width: 1.6,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: child,
+    );
   }
 
   @override
@@ -91,12 +135,12 @@ class _DashboardPageState extends State<DashboardPage> {
                   onRefresh: _loadData,
                   color: AppColors.primary,
                   child: SingleChildScrollView(
-                    physics: AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.all(20),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header avec bouton retour
+                        // Header
                         Row(
                           children: [
                             IconButton(
@@ -115,7 +159,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
                             // Sélecteur période
                             Container(
-                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(20),
@@ -125,7 +169,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 child: DropdownButton<String>(
                                   value: _period,
                                   isDense: true,
-                                  items: [
+                                  items: const [
                                     DropdownMenuItem(value: '7', child: Text('7j')),
                                     DropdownMenuItem(value: '30', child: Text('30j')),
                                   ],
@@ -139,35 +183,39 @@ class _DashboardPageState extends State<DashboardPage> {
                           ],
                         ),
 
-                        SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                        ExerciseStatsCard(),
+                        // ✅ Harmonisé (même cadre)
+                        _panel(
+                          padding: EdgeInsets.zero,
+                          child: ExerciseStatsCard(),
+                        ),
+
+                        const SizedBox(height: 20),
 
                         // Insights contexte
                         if (_contextInsights != null && (_contextInsights!['total'] as int) > 0)
                           _buildContextInsights(),
 
-                        SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-                        // Graphique humeur
-                        _buildMoodChart(),
+                        // ✅ À la place du graphique : synthèse plus parlante
+                        _buildMoodSummaryCard(),
 
-                        SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-                        // Cards stats
+                        // Stats
                         _buildStatsCards(),
 
-                        SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
                         // Catégories préférées
-                        if (_profile != null && _userCategories.isNotEmpty)
-                          _buildCategoriesSection(),
+                        if (_profile != null && _userCategories.isNotEmpty) _buildCategoriesSection(),
 
-                        SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
                         // Objectifs
-                        if (_profile != null && _profile!.mainGoals.isNotEmpty)
-                          _buildGoalsSection(),
+                        if (_profile != null && _profile!.mainGoals.isNotEmpty) _buildGoalsSection(),
                       ],
                     ),
                   ),
@@ -179,9 +227,102 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // ========== WIDGETS ==========
 
+  Widget _buildMoodSummaryCard() {
+    final avg = _averageMood;
+    final trend = _moodTrend;
+
+    String label;
+    IconData icon;
+    Color color;
+
+    if (_recentMoods.isEmpty) {
+      label = "Aucune donnée pour l’instant";
+      icon = Icons.info_outline;
+      color = AppColors.textMedium;
+    } else if (avg >= 7) {
+      label = "Plutôt stable et positif";
+      icon = Icons.sentiment_very_satisfied_outlined;
+      color = AppColors.success;
+    } else if (avg >= 4) {
+      label = "Mitigé, à surveiller";
+      icon = Icons.sentiment_neutral_outlined;
+      color = Colors.orange;
+    } else {
+      label = "Bas, priorité au reset";
+      icon = Icons.sentiment_dissatisfied_outlined;
+      color = AppColors.error;
+    }
+
+    return _panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.favorite_outline, color: AppColors.primary, size: 26),
+              const SizedBox(width: 10),
+              Text(
+                'Ton état (sur ${_period}j)',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.16)),
+                ),
+                child: Text(
+                  'Tendance $trend',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMedium),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _recentMoods.isEmpty
+                ? "Commence par enregistrer ton humeur pour voir une vraie progression."
+                : "Humeur moyenne : ${avg.toStringAsFixed(1)}/10 • ${_recentMoods.length} enregistrements",
+            style: TextStyle(color: AppColors.textMedium),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildContextInsights() {
     final data = _contextInsights!['data'] as List;
-    
+
     final Map<String, Map<String, int>> positiveContexts = {
       'location': {},
       'company': {},
@@ -201,17 +342,25 @@ class _DashboardPageState extends State<DashboardPage> {
       final timeOfDay = item['time_of_day'] as String;
       final activity = item['activity'] as String;
       final emotionType = item['emotion_type'] as String;
-      
+
       if (emotionType == 'positive') {
-        positiveContexts['location']![location] = (positiveContexts['location']![location] ?? 0) + 1;
-        positiveContexts['company']![company] = (positiveContexts['company']![company] ?? 0) + 1;
-        positiveContexts['time']![timeOfDay] = (positiveContexts['time']![timeOfDay] ?? 0) + 1;
-        positiveContexts['activity']![activity] = (positiveContexts['activity']![activity] ?? 0) + 1;
+        positiveContexts['location']![location] =
+            (positiveContexts['location']![location] ?? 0) + 1;
+        positiveContexts['company']![company] =
+            (positiveContexts['company']![company] ?? 0) + 1;
+        positiveContexts['time']![timeOfDay] =
+            (positiveContexts['time']![timeOfDay] ?? 0) + 1;
+        positiveContexts['activity']![activity] =
+            (positiveContexts['activity']![activity] ?? 0) + 1;
       } else {
-        negativeContexts['location']![location] = (negativeContexts['location']![location] ?? 0) + 1;
-        negativeContexts['company']![company] = (negativeContexts['company']![company] ?? 0) + 1;
-        negativeContexts['time']![timeOfDay] = (negativeContexts['time']![timeOfDay] ?? 0) + 1;
-        negativeContexts['activity']![activity] = (negativeContexts['activity']![activity] ?? 0) + 1;
+        negativeContexts['location']![location] =
+            (negativeContexts['location']![location] ?? 0) + 1;
+        negativeContexts['company']![company] =
+            (negativeContexts['company']![company] ?? 0) + 1;
+        negativeContexts['time']![timeOfDay] =
+            (negativeContexts['time']![timeOfDay] ?? 0) + 1;
+        negativeContexts['activity']![activity] =
+            (negativeContexts['activity']![activity] ?? 0) + 1;
       }
     }
 
@@ -237,50 +386,33 @@ class _DashboardPageState extends State<DashboardPage> {
       'strangers': '👥 avec des inconnus',
     };
 
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primary.withOpacity(0.1),
-            AppColors.secondary.withOpacity(0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.primary.withOpacity(0.2),
-          width: 2,
-        ),
-      ),
+    return _panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.insights, color: AppColors.primary, size: 28),
-              SizedBox(width: 12),
+              Icon(Icons.insights, color: AppColors.primary, size: 26),
+              const SizedBox(width: 10),
               Text(
                 'Tes insights',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textDark,
                 ),
               ),
             ],
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Contextes positifs
           if (bestLocation != null || bestCompany != null) ...[
             Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.success.withOpacity(0.1),
+                color: AppColors.success.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.success.withOpacity(0.3)),
+                border: Border.all(color: AppColors.success.withOpacity(0.25)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,7 +420,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   Row(
                     children: [
                       Icon(Icons.sentiment_satisfied_alt, color: AppColors.success, size: 20),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Text(
                         'Tu te sens bien',
                         style: TextStyle(
@@ -299,7 +431,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   if (bestLocation != null)
                     Text(
                       '${contextLabels[bestLocation] ?? bestLocation}',
@@ -313,17 +445,16 @@ class _DashboardPageState extends State<DashboardPage> {
                 ],
               ),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
           ],
 
-          // Contextes négatifs
           if (worstLocation != null || worstCompany != null) ...[
             Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.1),
+                color: AppColors.error.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                border: Border.all(color: AppColors.error.withOpacity(0.25)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,7 +462,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   Row(
                     children: [
                       Icon(Icons.warning_amber, color: AppColors.error, size: 20),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Text(
                         'Attention à',
                         style: TextStyle(
@@ -342,7 +473,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   if (worstLocation != null)
                     Text(
                       '${contextLabels[worstLocation] ?? worstLocation}',
@@ -364,196 +495,43 @@ class _DashboardPageState extends State<DashboardPage> {
 
   String? _getMostFrequent(Map<String, int> map) {
     if (map.isEmpty) return null;
-    var entries = map.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    var entries = map.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     return entries.first.key;
   }
 
-  Widget _buildMoodChart() {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Évolution de l\'humeur',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      'Tendance ',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMedium,
-                      ),
-                    ),
-                    Text(
-                      _moodTrend,
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 20),
-          _recentMoods.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Text(
-                      'Aucune donnée pour le moment\nCommence par enregistrer ton humeur ! 💜',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textMedium),
-                    ),
-                  ),
-                )
-              : Container(
-                  height: 220,
-                  padding: EdgeInsets.only(right: 16, top: 16, bottom: 16), // ✅ Ajout bottom
-                  clipBehavior: Clip.hardEdge, // ✅ NOUVEAU : Empêche le débordement
-                  decoration: BoxDecoration(),
-                  child: LineChart(
-                    LineChartData(
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: false,
-                        horizontalInterval: 1,
-                        getDrawingHorizontalLine: (value) {
-                          return FlLine(
-                            color: AppColors.textLight.withOpacity(0.1),
-                            strokeWidth: 1,
-                          );
-                        },
-                      ),
-                      titlesData: FlTitlesData(
-                        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 30,
-                            getTitlesWidget: (value, meta) {
-                              if (value.toInt() >= _recentMoods.length) return Text('');
-                              final mood = _recentMoods[value.toInt()];
-                              final date = mood.createdAt;
-                              return Padding(
-                                padding: EdgeInsets.only(top: 8),
-                                child: Text(
-                                  '${date.day}/${date.month}',
-                                  style: TextStyle(fontSize: 10, color: AppColors.textMedium),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      borderData: FlBorderData(show: false),
-                      minX: 0,
-                      maxX: (_recentMoods.length - 1).toDouble(),
-                      minY: 0,
-                      maxY: 10,
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: _recentMoods
-                              .asMap()
-                              .entries
-                              .map((e) => FlSpot(e.key.toDouble(), e.value.emotionId.toDouble()))
-                              .toList(),
-                          isCurved: true,
-                          curveSmoothness: 0.3,
-                          gradient: AppColors.primaryGradient,
-                          barWidth: 3,
-                          isStrokeCapRound: true,
-                          dotData: FlDotData(
-                            show: true,
-                            getDotPainter: (spot, percent, barData, index) {
-                              return FlDotCirclePainter(
-                                radius: 4,
-                                color: AppColors.primary,
-                                strokeWidth: 2,
-                                strokeColor: Colors.white,
-                              );
-                            },
-                          ),
-                          belowBarData: BarAreaData(
-                            show: true,
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                AppColors.primary.withOpacity(0.2),
-                                AppColors.primary.withOpacity(0.0),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildStatsCards() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.local_fire_department,
-            value: '${_profile?.currentStreak ?? 0}',
-            label: 'Jours de suite',
-            color: Colors.orange,
+    return _panel(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildStatCard(
+              icon: Icons.local_fire_department,
+              value: '${_profile?.currentStreak ?? 0}',
+              label: 'Jours de suite',
+              color: Colors.orange,
+            ),
           ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.check_circle_outline,
-            value: '${_profile?.totalTipsCompleted ?? 0}',
-            label: 'Tips complétés',
-            color: AppColors.success,
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatCard(
+              icon: Icons.check_circle_outline,
+              value: '${_profile?.totalTipsCompleted ?? 0}',
+              label: 'Tips complétés',
+              color: AppColors.success,
+            ),
           ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.sentiment_satisfied_alt,
-            value: _averageMood.toStringAsFixed(1),
-            label: 'Humeur moy.',
-            color: AppColors.secondary,
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatCard(
+              icon: Icons.sentiment_satisfied_alt,
+              value: _averageMood.toStringAsFixed(1),
+              label: 'Humeur moy.',
+              color: AppColors.secondary,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -564,31 +542,25 @@ class _DashboardPageState extends State<DashboardPage> {
     required Color color,
   }) {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: AppColors.primary.withOpacity(0.12)),
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 32),
-          SizedBox(height: 8),
+          Icon(icon, color: color, size: 30),
+          const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: color,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
@@ -610,49 +582,53 @@ class _DashboardPageState extends State<DashboardPage> {
       'musique': {'emoji': '🎵', 'label': 'Musique', 'color': AppColors.categories['musique']!},
     };
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Mes catégories',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textDark,
+    return _panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Mes catégories',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
+            ),
           ),
-        ),
-        SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _userCategories.map((cat) {  // ✅ CORRIGÉ : Utilise _userCategories
-            final info = categories[cat];
-            if (info == null) return SizedBox.shrink();
-            return Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: (info['color'] as Color).withOpacity(0.3), width: 2),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(info['emoji'] as String, style: TextStyle(fontSize: 20)),
-                  SizedBox(width: 8),
-                  Text(
-                    info['label'] as String,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textDark,
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _userCategories.map((cat) {
+              final info = categories[cat];
+              if (info == null) return const SizedBox.shrink();
+              final Color chipColor = info['color'] as Color;
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: chipColor.withOpacity(0.28), width: 1.6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(info['emoji'] as String, style: const TextStyle(fontSize: 20)),
+                    const SizedBox(width: 8),
+                    Text(
+                      info['label'] as String,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textDark,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ],
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -666,62 +642,58 @@ class _DashboardPageState extends State<DashboardPage> {
       'self_care': {'label': 'Prendre soin', 'icon': Icons.self_improvement_outlined},
     };
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Mes objectifs',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textDark,
+    return _panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Mes objectifs',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
+            ),
           ),
-        ),
-        SizedBox(height: 12),
-        ...(_profile!.mainGoals.map((goal) {
-          final info = goals[goal];
-          if (info == null) return SizedBox.shrink();
-          return Container(
-            margin: EdgeInsets.only(bottom: 8),
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    shape: BoxShape.circle,
+          const SizedBox(height: 12),
+          ...(_profile!.mainGoals.map((goal) {
+            final info = goals[goal];
+            if (info == null) return const SizedBox.shrink();
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.primary.withOpacity(0.12)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      info['icon'] as IconData,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                   ),
-                  child: Icon(
-                    info['icon'] as IconData,
-                    color: AppColors.primary,
-                    size: 20,
+                  const SizedBox(width: 12),
+                  Text(
+                    info['label'] as String,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textDark,
+                    ),
                   ),
-                ),
-                SizedBox(width: 12),
-                Text(
-                  info['label'] as String,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textDark,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList()),
-      ],
+                ],
+              ),
+            );
+          }).toList()),
+        ],
+      ),
     );
   }
 }
