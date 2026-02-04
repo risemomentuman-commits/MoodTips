@@ -541,11 +541,11 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
                 _buildHeader(categoryColor),
                 SizedBox(height: 40),
                 _buildStepsProgress(progress),
-                SizedBox(height: 40),
+                SizedBox(height: 20),
                 _buildBreathingCircle(categoryColor),
                 SizedBox(height: 40),
                 _buildInstructionCard(currentStep, categoryColor),
-                SizedBox(height: 60),  // ✅ Remplacer Spacer()
+                SizedBox(height: 40),  // ✅ Remplacer Spacer()
                 _buildTimer(),
                 SizedBox(height: 24),
                 _buildControls(categoryColor),

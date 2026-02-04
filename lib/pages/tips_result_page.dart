@@ -171,7 +171,7 @@ class _TipsResultPageState extends State<TipsResultPage> {
                     child: Column(
                       children: [
                         Text(
-                          'Nos recommandations pour vous',
+                          'Mes recommandations pour toi',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -181,7 +181,7 @@ class _TipsResultPageState extends State<TipsResultPage> {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'Commencez par l\'un de ces exercices',
+                          'Commence par l\'un de ces exercices',
                           style: TextStyle(
                             fontSize: 16,
                             color: AppColors.textGrey,

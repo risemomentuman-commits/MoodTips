@@ -16,7 +16,7 @@ class _OnboardingSlidesPageState extends State<OnboardingSlidesPage> {
   final List<Map<String, dynamic>> _slides = [
     {
       'icon': Icons.sentiment_satisfied_alt_rounded,
-      'title': 'Chaque jour, dis-nous\ncomment tu te sens',
+      'title': 'Chaque jour, dis-moi\ncomment tu te sens',
       'description': 'Un simple check-in quotidien pour prendre soin de toi',
       'color': AppColors.emotions['heureux']!
     },
