@@ -95565,7 +95565,7 @@ r=A.bf(A.u("Mon Tableau de Bord",f,f,f,A.M(f,f,B.v,f,f,f,f,f,f,f,f,24,f,f,B.t,f,
 q=A.a7(20)
 p=A.co(A.z(B.c.P(76.5),B.f.gi(0)>>>16&255,B.f.gi(0)>>>8&255,B.f.gi(0)&255),1)
 o=t.p
-q=A.a([A.aD(A.a([s,r,new A.zW(f),A.a1(f,new A.Bf(new A.vh(B.LP,g.w,new A.awa(g),!0,f,t.Af),f),B.i,f,f,new A.a_(B.e,f,p,q,f,f,B.q),f,f,f,f,B.Ia,f,f,f)],o),B.m,B.k,B.j,f),B.Tv,g.If(new A.Bx(f),B.a5),B.fS],o)
+q=A.a([A.aD(A.a([s,r,A.a1(f,new A.Bf(new A.vh(B.LP,g.w,new A.awa(g),!0,f,t.Af),f),B.i,f,f,new A.a_(B.e,f,p,q,f,f,B.q),f,f,f,f,B.Ia,f,f,f)],o),B.m,B.k,B.j,f),B.Tv,g.If(new A.Bx(f),B.a5),B.fS,new A.zW(f)],o)
 s=g.f
 if(s!=null&&A.bN(J.aq(s,"total"))>0)q.push(g.a9W())
 q.push(B.fS)
