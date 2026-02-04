@@ -4,6 +4,7 @@ import '../services/supabase_service.dart';
 import '../utils/app_colors.dart';
 import '../models/user_profile.dart';
 import '../models/mood_log.dart';
+import '../widgets/exercise_stats_card.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -139,6 +140,8 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
 
                         SizedBox(height: 24),
+
+                        ExerciseStatsCard(),
 
                         // Insights contexte
                         if (_contextInsights != null && (_contextInsights!['total'] as int) > 0)
