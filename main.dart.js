@@ -94297,7 +94297,7 @@ $1(a){return new A.pU(null)},
 $S:565}
 A.aiK.prototype={
 $1(a){var s=a.a
-if(s==="/moodCheck"||s==="/auth/callback"||s==="/email-confirmed")return A.aP0(new A.aiH(),null,t.z)
+if(s==="/auth/callback"||s==="/email-confirmed")return A.aP0(new A.aiH(),null,t.z)
 return null},
 $S:566}
 A.aiH.prototype={
