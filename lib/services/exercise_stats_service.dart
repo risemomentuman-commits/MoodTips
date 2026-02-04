@@ -88,7 +88,7 @@ class ExerciseStatsService {
         betterCount: betterCount,
         sameCount: sameCount,
         worseCount: worseCount,
-        improvementRate: improvementRate,
+        improvementRate: improvementRate.toDouble(),
         topExercises: topExercises,
       );
       
