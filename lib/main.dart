@@ -135,7 +135,7 @@ class MyApp extends StatelessWidget {
       
       // ✅ GESTION DES ROUTES DYNAMIQUES (redirections email, etc.)
       onGenerateRoute: (settings) {
-        if (settings.name == '/moodCheck' || settings.name == '/auth/callback' || settings.name == '/email-confirmed') {
+        if (settings.name == '/auth/callback' || settings.name == '/email-confirmed') {
           return MaterialPageRoute(
             builder: (_) => Scaffold(
               backgroundColor: AppColors.backgroundPrimary,
@@ -169,7 +169,9 @@ class MyApp extends StatelessWidget {
       },
     );
   }
-  
+
+
+
   // ✅ FONCTION POUR DÉTERMINER LA DESTINATION DE DÉPART
   Future<AppStartDestination> _determineStartDestination() async {
     try {
