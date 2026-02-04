@@ -7,6 +7,7 @@ import '../models/instruction_step.dart';
 import '../utils/app_colors.dart';
 import '../services/supabase_service.dart';
 import '../services/audio_preloader.dart';
+import '../utils/badge_checker.dart';
  
 
 class TipsPlayerPage extends StatefulWidget {
@@ -495,6 +496,10 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
       );
       
       print('✅ Feedback enregistré : $feeling');
+      // 🆕 Vérifier badges après exercice
+      if (mounted) {
+        await BadgeChecker.checkAndShowBadges(context);
+      }
     } catch (e) {
       print('❌ Erreur feedback : $e');
     }

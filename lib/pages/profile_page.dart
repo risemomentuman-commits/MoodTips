@@ -5,6 +5,7 @@ import 'dart:io';
 import '../services/supabase_service.dart';
 import '../utils/app_colors.dart';
 import '../models/user_profile.dart';
+import '../utils/badge_checker.dart';
 
 class ProfilePage extends StatefulWidget {
   @override

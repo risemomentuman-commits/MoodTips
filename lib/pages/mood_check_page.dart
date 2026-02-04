@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/badge_service.dart';
 import '../widgets/badge_unlock_dialog.dart';
+import '../utils/badge_checker.dart';
 
 class MoodCheckPage extends StatefulWidget {
   @override
@@ -85,6 +86,8 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
         );
       }
     }
+    // 🆕 Version simplifiée
+    await BadgeChecker.checkAndShowBadges(context);
     
     // Recharger le profil ET l'analyse
     setState(() {
@@ -394,20 +397,10 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                             return;
                           }
 
-                          // ✅ NOUVEAU : Vérifier nouveaux badges
-                          final newBadges = await BadgeService.checkAndUnlockBadges();
+                          // 🆕 Vérifier badges (version simplifiée)
+                          await BadgeChecker.checkAndShowBadges(context);
 
-                          // Afficher animation pour chaque nouveau badge
-                          for (var badge in newBadges) {
-                            if (mounted) {
-                              await showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (context) => BadgeUnlockDialog(badge: badge),
-                              );
-                            }
-                          }
-                          
+                                                    
                           Navigator.pushNamed(
                             context,
                             AppRoutes.context,

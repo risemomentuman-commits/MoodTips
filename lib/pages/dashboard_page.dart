@@ -5,6 +5,7 @@ import '../models/user_profile.dart';
 import '../models/mood_log.dart';
 import '../widgets/exercise_stats_card.dart';
 import '../services/badge_service.dart';
+import '../widgets/badges_summary_widget.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -170,6 +171,10 @@ class _DashboardPageState extends State<DashboardPage> {
                                 ),
                               ),
                             ),
+
+                            // 🆕 Widget badges (temporairement commenté)
+                            // BadgesSummaryWidget(),
+
                             // Sélecteur période
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -505,6 +510,8 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
+
+ 
 
   String? _getMostFrequent(Map<String, int> map) {
     if (map.isEmpty) return null;
