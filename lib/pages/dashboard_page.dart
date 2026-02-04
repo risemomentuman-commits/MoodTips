@@ -4,6 +4,7 @@ import '../utils/app_colors.dart';
 import '../models/user_profile.dart';
 import '../models/mood_log.dart';
 import '../widgets/exercise_stats_card.dart';
+import '../services/badge_service.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -21,6 +22,18 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  Future<void> _testBadges() async {
+    final badges = await BadgeService.getUserBadges();
+    print('📊 Total badges: ${badges.length}');
+    
+    for (var badge in badges) {
+      print('${badge.emoji} ${badge.name}: ${badge.currentProgress}/${badge.requiredCount}');
+      if (badge.isUnlocked) {
+        print('   ✅ Débloqué le ${badge.unlockedAt}');
+      }
+    }
   }
 
   Future<void> _loadData() async {
