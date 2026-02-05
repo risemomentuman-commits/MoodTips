@@ -73,14 +73,18 @@ class _ContextPageState extends State<ContextPage> with TickerProviderStateMixin
     super.initState();
     _fadeController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 600),
+      duration: Duration(milliseconds: 300),
     );
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
       curve: Curves.easeOut,
     );
     _fadeController.forward();
-    
+    Future.delayed(Duration(milliseconds: 50), () {
+      if (mounted) _fadeController.forward();
+    });
+
+       
     // Auto-sélectionner le moment de la journée basé sur l'heure actuelle
     _autoSelectTimeOfDay();
   }
