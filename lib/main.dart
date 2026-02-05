@@ -147,7 +147,7 @@ class _MyAppState extends State<MyApp> {
             case AppStartDestination.onboarding:
               return OnboardingSlidesPage();
             case AppStartDestination.home:
-              return MoodCheckPage();
+              return MoodCheckPage(key: ValueKey(AppColors.currentThemeId)); // ✅ Force rebuild
           }
         },
       ),
@@ -155,7 +155,7 @@ class _MyAppState extends State<MyApp> {
       routes: {
         ...AppRoutes.getRoutes(),
         '/badges': (context) => BadgesPage(),
-        '/moodCheck': (context) => MoodCheckPage(),  // ← Ajoute ça
+        '/moodCheck': (context) => MoodCheckPage(key: ValueKey(AppColors.currentThemeId)), // ✅ Force rebuild
       },
       
       // ✅ GESTION DES ROUTES DYNAMIQUES (redirections email, etc.)

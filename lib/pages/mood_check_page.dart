@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../utils/badge_checker.dart';
 
 class MoodCheckPage extends StatefulWidget {
+   const MoodCheckPage({Key? key}) : super(key: key); // ✅ Accepte maintenant une clé
   @override
   _MoodCheckPageState createState() => _MoodCheckPageState();
 }
@@ -79,7 +80,15 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: AppColors.backgroundGradient,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary.withOpacity(0.05),      // ✅ Touche subtile de la couleur du thème
+            AppColors.secondary.withOpacity(0.03),    // ✅ Encore plus léger
+            AppColors.backgroundPrimary,              // ✅ Retour au beige naturel
+          ],
+        ),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
