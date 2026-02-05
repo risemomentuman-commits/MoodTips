@@ -171,38 +171,46 @@ class _EmotionWheelState extends State<EmotionWheel>
                 size: 40, // ✅ RÉDUIT
                 color: AppColors.primary,
               ),
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.heavyImpact();
-                  widget.onEmotionSelected(widget.emotions[_selectedIndex]);
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.streakGradient, // ✅ HARMONISÉ
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        widget.emotions[_selectedIndex].name,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.heavyImpact();
+                    widget.onEmotionSelected(widget.emotions[_selectedIndex]);
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  splashColor: Colors.white.withOpacity(0.3),
+                  highlightColor: Colors.white.withOpacity(0.1),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      gradient: AppColors.streakGradient,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
                         ),
+                      ],
+                    ),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.emotions[_selectedIndex].name,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(Icons.check_circle, color: Colors.white, size: 20),
+                        ],
                       ),
-                      SizedBox(width: 8),
-                      Icon(Icons.check_circle, color: Colors.white, size: 20),
-                    ],
+                    ),
                   ),
                 ),
               ),
