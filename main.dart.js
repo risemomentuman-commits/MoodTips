@@ -94991,7 +94991,7 @@ s=1
 break}m=new A.ce(Date.now(),0,!1).us(0-A.b9(7,0,0,0).a)
 b=$.cT().b
 b===$&&A.b()
-b=b.bK("user_tips").eD(0,"duration_actual_seconds, tips(category)").c8("user_id",n).c8("completed",!0)
+b=b.bK("tips_sessions").eD(0,"duration_actual_seconds, tips(category)").c8("user_id",n).c8("completed",!0)
 s=7
 return A.h(A.oy(b.ol(b.n3("completed_at","gte."+m.ia())),b.$ti.c),$async$zA)
 case 7:l=a4
