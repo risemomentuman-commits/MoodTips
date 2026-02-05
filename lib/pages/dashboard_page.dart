@@ -90,21 +90,39 @@ class _DashboardPageState extends State<DashboardPage> {
 
       final oneWeekAgo = DateTime.now().subtract(Duration(days: 7));
       
+      // ✅ Récupérer les tips complétés avec leurs catégories
       final response = await Supabase.instance.client
           .from('user_tips')
-          .select('tip_id')
+          .select('duration_actual_seconds, tips(category)') // Joindre avec la table tips
           .eq('user_id', userId)
-          .eq('status', 'completed')
+          .eq('completed', true) // ✅ completed est un boolean
           .gte('completed_at', oneWeekAgo.toIso8601String());
 
+      // Compter par catégorie
+      int breathing = 0, movement = 0, mental = 0, music = 0;
+      int totalSeconds = 0;
+      
+      for (var item in response as List) {
+        final category = item['tips']?['category'];
+        final duration = item['duration_actual_seconds'] ?? 0;
+        
+        // Compter par catégorie
+        if (category == 'respiration') breathing++;
+        if (category == 'mouvement') movement++;
+        if (category == 'mental') mental++;
+        if (category == 'musique') music++;
+        
+        totalSeconds += duration as int;
+      }
+
       return {
-        'breathing': 5,
-        'movement': 3,
-        'mental': 2,
-        'total_minutes': 45,
+        'breathing': breathing,
+        'movement': movement,
+        'mental': mental,
+        'total_minutes': (totalSeconds / 60).round(), // ✅ Convertir secondes en minutes
       };
     } catch (e) {
-      print('Erreur stats exercices: $e');
+      print('❌ Erreur stats exercices: $e');
       return null;
     }
   }
