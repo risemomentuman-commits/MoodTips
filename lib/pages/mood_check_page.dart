@@ -237,7 +237,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                         children: [
                           Icon(
                             _isExpressMode ? Icons.flash_on : Icons.tune,
-                            color: _isExpressMode ? AppColors.warning : AppColors.primary,
+                            color: AppColors.primary,
                             size: 20,
                           ),
                           SizedBox(width: 8),
@@ -269,7 +269,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                           setState(() => _isExpressMode = value);
                           HapticFeedback.lightImpact();
                         },
-                        activeColor: AppColors.warning,
+                        activeColor: AppColors.primary,
                       ),
                     ],
                   ),
@@ -381,29 +381,25 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                 SizedBox(height: 8),
                 
                 // Bouton Feedback
-                Container(
-                  width: double.infinity,
-                  margin: EdgeInsets.symmetric(horizontal: 32),
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      final url = 'https://docs.google.com/forms/d/e/1FAIpQLSd5GIhsTxsvTGQULpspFzYboTV3jKXCG8ymRTSU4EYQdOlpUQ/viewform';
-                      try {
-                        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Impossible d\'ouvrir le lien')),
-                        );
-                      }
-                    },
-                    icon: Icon(Icons.feedback, size: 20),
-                    label: Text('Feedback Test MoodTips'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.warning,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final url = 'https://docs.google.com/forms/d/e/1FAIpQLSd5GIhsTxsvTGQULpspFzYboTV3jKXCG8ymRTSU4EYQdOlpUQ/viewform';
+                    try {
+                      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Impossible d\'ouvrir le lien')),
+                      );
+                    }
+                  },
+                  icon: Icon(Icons.feedback, size: 20),
+                  label: Text('Feedback Test MoodTips'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.secondary, // ✅ Secondary au lieu de warning
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),

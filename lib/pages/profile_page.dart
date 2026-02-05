@@ -757,6 +757,8 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
 
+                            const SizedBox(height: 24),
+
                             // Bouton Modifier mot de passe
                             SizedBox(
                               width: double.infinity,
