@@ -92,7 +92,7 @@ class _DashboardPageState extends State<DashboardPage> {
       
       // ✅ Récupérer les tips complétés avec leurs catégories
       final response = await Supabase.instance.client
-          .from('user_tips')
+          .from('tips_sessions') // ✅ Bon nom de table
           .select('duration_actual_seconds, tips(category)') // Joindre avec la table tips
           .eq('user_id', userId)
           .eq('completed', true) // ✅ completed est un boolean
