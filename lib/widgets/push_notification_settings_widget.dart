@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../services/web_notification_service.dart';
 import '../utils/app_colors.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // ✅ Ajouter
 
 class PushNotificationSettingsWidget extends StatefulWidget {
   @override
@@ -29,16 +30,40 @@ class _PushNotificationSettingsWidgetState extends State<PushNotificationSetting
 
     setState(() => _isLoading = true);
 
-    // 1) Lire la DB (source de vérité)
-    final dbEnabled = await WebNotificationService.areNotificationsEnabled();
+    try {
+      // ✅ Lire depuis Supabase profiles (source de vérité unique)
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      
+      if (userId == null) {
+        setState(() {
+          _isEnabled = false;
+          _isLoading = false;
+        });
+        return;
+      }
 
-    // 2) Mettre à jour aussi le local (pour cohérence)
-    WebNotificationService.setLocalEnabled(dbEnabled);
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select('notifications_enabled')
+          .eq('id', userId)
+          .maybeSingle();
 
-    setState(() {
-      _isEnabled = dbEnabled;
-      _isLoading = false;
-    });
+      final dbEnabled = profile?['notifications_enabled'] ?? false;
+
+      // Synchroniser avec WebNotificationService
+      WebNotificationService.setLocalEnabled(dbEnabled);
+
+      setState(() {
+        _isEnabled = dbEnabled;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('❌ Erreur chargement notifs: $e');
+      setState(() {
+        _isEnabled = false;
+        _isLoading = false;
+      });
+    }
   }
 
 
@@ -48,30 +73,60 @@ class _PushNotificationSettingsWidgetState extends State<PushNotificationSetting
 
     setState(() => _isLoading = true);
 
-    if (value) {
-      // === ACTIVER ===
-      final ok = await WebNotificationService.requestPermissionAndRegisterToken();
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      
+      if (userId == null) {
+        throw Exception('Non connecté');
+      }
 
-      if (ok) {
-        // UI = ON immédiatement
-        setState(() {
-          _isEnabled = true;
-          _isLoading = false;
-        });
+      if (value) {
+        // === ACTIVER ===
+        final ok = await WebNotificationService.requestPermissionAndRegisterToken();
 
-        // Sync DB en arrière-plan (si user connecté)
-        WebNotificationService.setNotificationsEnabled(true);
+        if (ok) {
+          // ✅ Sauvegarder dans Supabase (source de vérité)
+          await Supabase.instance.client
+              .from('profiles')
+              .update({'notifications_enabled': true})
+              .eq('id', userId);
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('🔔 Notifications activées'),
-              backgroundColor: AppColors.success,
-            ),
-          );
+          setState(() {
+            _isEnabled = true;
+            _isLoading = false;
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('🔔 Notifications activées'),
+                backgroundColor: AppColors.success,
+              ),
+            );
+          }
+        } else {
+          setState(() {
+            _isEnabled = false;
+            _isLoading = false;
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('❌ Autorise les notifications dans ton navigateur'),
+                backgroundColor: AppColors.warning,
+              ),
+            );
+          }
         }
       } else {
-        // Permission refusée ou token KO → on reste OFF
+        // === DÉSACTIVER ===
+        // ✅ Sauvegarder dans Supabase
+        await Supabase.instance.client
+            .from('profiles')
+            .update({'notifications_enabled': false})
+            .eq('id', userId);
+
         setState(() {
           _isEnabled = false;
           _isLoading = false;
@@ -79,32 +134,13 @@ class _PushNotificationSettingsWidgetState extends State<PushNotificationSetting
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '❌ Autorise les notifications dans ton navigateur',
-              ),
-              backgroundColor: AppColors.warning,
-            ),
+            SnackBar(content: Text('🔕 Notifications désactivées')),
           );
         }
       }
-    } else {
-      // === DÉSACTIVER ===
-      setState(() {
-        _isEnabled = false;
-        _isLoading = false;
-      });
-
-      // Sync DB
-      WebNotificationService.setNotificationsEnabled(false);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('🔕 Notifications désactivées'),
-          ),
-        );
-      }
+    } catch (e) {
+      print('❌ Erreur toggle notifs: $e');
+      setState(() => _isLoading = false);
     }
   }
 

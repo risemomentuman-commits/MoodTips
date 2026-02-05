@@ -76,7 +76,7 @@ class _ConsentPageState extends State<ConsentPage> {
                     ),
                     SizedBox(height: 40),
                     
-                    // Option Notifications
+
                     // Option Notifications
                     _buildConsentCard(
                       icon: Icons.notifications_outlined,
