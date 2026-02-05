@@ -42,7 +42,28 @@ void main() async {
 }
 
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  // 🔑 Clé globale pour recharger l'app
+  static final GlobalKey<_MyAppState> appKey = GlobalKey<_MyAppState>();
+
+  // 📱 Méthode statique pour recharger toute l'app
+  static void reload() {
+    appKey.currentState?.reload();
+  }
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  // 🔄 Méthode pour forcer le rebuild
+  void reload() {
+    setState(() {
+      // Le setState force la reconstruction de tout le widget tree
+    });
+  }
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

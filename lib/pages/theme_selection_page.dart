@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../utils/app_colors.dart';
+import '../main.dart'; // ✅ Pour accéder à MyApp.reload()
 
 class ThemeSelectionPage extends StatefulWidget {
   const ThemeSelectionPage({Key? key}) : super(key: key);
@@ -169,6 +170,8 @@ class _ThemeSelectionPageState extends State<ThemeSelectionPage>
 
         // Sauvegarder le thème
         await AppColors.setTheme(themeId);
+
+        MyApp.reload();
 
         // Attendre un peu pour l'animation
         await Future.delayed(Duration(milliseconds: 300));
