@@ -20,15 +20,36 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoading = true;
   bool _isUploadingPhoto = false;
   String? _userEmail;
+
+  /// URL "propre" (sans cache-bust)
   String? _photoUrl;
+
+  /// Version pour casser le cache (stockée en userMetadata)
+  int _avatarVersion = 0;
 
   final ImagePicker _picker = ImagePicker();
 
-  // ✅ Chemin FIXE (évite de remplir ton bucket avec 100 avatars)
   String? _avatarStoragePath() {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return null;
+    // ✅ chemin fixe
     return 'avatars/$userId/avatar.jpg';
+  }
+
+  String? get _displayAvatarUrl {
+    if (_photoUrl == null) return null;
+    // ✅ cache bust
+    return '$_photoUrl?v=$_avatarVersion';
+  }
+
+  Future<void> _evictImage(String url) async {
+    try {
+      final provider = NetworkImage(url);
+      await provider.evict();
+      PaintingBinding.instance.imageCache.evict(provider);
+    } catch (_) {
+      // Pas bloquant
+    }
   }
 
   @override
@@ -44,14 +65,29 @@ class _ProfilePageState extends State<ProfilePage> {
       final user = Supabase.instance.client.auth.currentUser;
       _userEmail = user?.email;
 
-      // Charger l'URL de la photo si elle existe
       final metadata = user?.userMetadata;
-      if (metadata != null && metadata['avatar_url'] != null) {
-        _photoUrl = metadata['avatar_url'] as String?;
+      if (metadata != null) {
+        final url = metadata['avatar_url'];
+        if (url is String && url.isNotEmpty) {
+          _photoUrl = url;
+        } else {
+          _photoUrl = null;
+        }
+
+        final ver = metadata['avatar_version'];
+        // Supabase peut renvoyer int/num/string selon les cas
+        if (ver is int) {
+          _avatarVersion = ver;
+        } else if (ver is num) {
+          _avatarVersion = ver.toInt();
+        } else if (ver is String) {
+          _avatarVersion = int.tryParse(ver) ?? 0;
+        } else {
+          _avatarVersion = 0;
+        }
       }
 
       final profile = await SupabaseService.getProfile();
-
       if (profile != null) {
         setState(() {
           _profile = profile;
@@ -85,7 +121,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 20),
 
-            // ✅ Caméra uniquement sur mobile (sur Web c'est aléatoire)
+            // ✅ Caméra uniquement mobile (Web = aléatoire)
             if (!kIsWeb)
               ListTile(
                 leading: Container(
@@ -162,10 +198,16 @@ class _ProfilePageState extends State<ProfilePage> {
       final storagePath = _avatarStoragePath();
       if (storagePath == null) throw Exception('Storage path not available');
 
-      // ✅ Cross-platform: bytes (pas de File)
+      // ✅ éviction de l'ancienne image avant update
+      final oldDisplay = _displayAvatarUrl;
+      if (oldDisplay != null) {
+        await _evictImage(oldDisplay);
+      }
+
+      // ✅ Cross-platform: bytes
       final Uint8List bytes = await image.readAsBytes();
 
-      // ✅ Upload stable sur Web/iOS/Android
+      // ✅ Upload stable Web/iOS/Android
       await Supabase.instance.client.storage
           .from('profiles')
           .uploadBinary(
@@ -173,24 +215,38 @@ class _ProfilePageState extends State<ProfilePage> {
             bytes,
             fileOptions: const FileOptions(
               contentType: 'image/jpeg',
-              upsert: true, // ✅ remplace le fichier existant
+              upsert: true,
             ),
           );
 
-      // URL publique
+      // URL publique (reste stable)
       final publicUrl = Supabase.instance.client.storage
           .from('profiles')
           .getPublicUrl(storagePath);
 
-      // Mettre à jour les metadata (avatar_url)
+      // ✅ version unique pour casser le cache
+      final newVersion = DateTime.now().millisecondsSinceEpoch;
+
       await Supabase.instance.client.auth.updateUser(
-        UserAttributes(data: {'avatar_url': publicUrl}),
+        UserAttributes(
+          data: {
+            'avatar_url': publicUrl,
+            'avatar_version': newVersion,
+          },
+        ),
       );
 
       setState(() {
         _photoUrl = publicUrl;
+        _avatarVersion = newVersion;
         _isUploadingPhoto = false;
       });
+
+      // ✅ éviction aussi après update (utile sur certains devices)
+      final newDisplay = _displayAvatarUrl;
+      if (newDisplay != null) {
+        await _evictImage(newDisplay);
+      }
 
       if (!mounted) return;
 
@@ -228,24 +284,36 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final storagePath = _avatarStoragePath();
 
+      // ✅ éviction avant suppression
+      final oldDisplay = _displayAvatarUrl;
+      if (oldDisplay != null) {
+        await _evictImage(oldDisplay);
+      }
+
       // 1) Nettoyer metadata
       await Supabase.instance.client.auth.updateUser(
-        UserAttributes(data: {'avatar_url': null}),
+        UserAttributes(
+          data: {
+            'avatar_url': null,
+            'avatar_version': 0,
+          },
+        ),
       );
 
-      // 2) (Optionnel mais propre) supprimer le fichier Storage
+      // 2) Supprimer le fichier Storage (optionnel mais propre)
       if (storagePath != null) {
         try {
           await Supabase.instance.client.storage
               .from('profiles')
               .remove([storagePath]);
         } catch (_) {
-          // On ne bloque pas l'utilisateur si remove échoue
+          // pas bloquant
         }
       }
 
       setState(() {
         _photoUrl = null;
+        _avatarVersion = 0;
         _isUploadingPhoto = false;
       });
 
@@ -362,6 +430,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final avatarUrl = _displayAvatarUrl;
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -399,6 +469,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
               ),
+
               Expanded(
                 child: _isLoading
                     ? Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -406,6 +477,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         padding: const EdgeInsets.all(24),
                         child: Column(
                           children: [
+                            // Avatar
                             Stack(
                               children: [
                                 GestureDetector(
@@ -427,13 +499,15 @@ class _ProfilePageState extends State<ProfilePage> {
                                         ? Center(
                                             child: CircularProgressIndicator(color: AppColors.primary),
                                           )
-                                        : _photoUrl != null
+                                        : avatarUrl != null
                                             ? ClipOval(
                                                 child: Image.network(
-                                                  _photoUrl!,
+                                                  avatarUrl,
                                                   width: 120,
                                                   height: 120,
                                                   fit: BoxFit.cover,
+                                                  // Optionnel: évite de “recycler” une ancienne frame
+                                                  gaplessPlayback: false,
                                                   errorBuilder: (context, error, stackTrace) {
                                                     return Container(
                                                       decoration: BoxDecoration(
@@ -454,6 +528,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                               ),
                                   ),
                                 ),
+
                                 Positioned(
                                   bottom: 0,
                                   right: 0,
@@ -472,6 +547,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               ],
                             ),
+
                             const SizedBox(height: 32),
 
                             // Email
