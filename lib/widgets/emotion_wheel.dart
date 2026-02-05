@@ -51,15 +51,13 @@ class _EmotionWheelState extends State<EmotionWheel>
       });
     });
 
-    // Animation initiale (la roue tourne au démarrage)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _playInitialAnimation();
     });
   }
 
   void _playInitialAnimation() async {
-    // Faire 2 tours complets puis s'arrêter sur la première émotion
-    final initialRotation = math.pi * 4; // 2 tours
+    final initialRotation = math.pi * 4;
     
     _rotationAnimation = Tween<double>(
       begin: 0.0,
@@ -96,11 +94,7 @@ class _EmotionWheelState extends State<EmotionWheel>
     });
 
     _controller.forward(from: 0.0);
-    
-    // Haptic feedback léger
     HapticFeedback.lightImpact();
-    
-    // Son de sélection (optionnel, simple et léger)
     SystemSound.play(SystemSoundType.click);
   }
 
@@ -123,7 +117,6 @@ class _EmotionWheelState extends State<EmotionWheel>
       _currentRotation += details.delta.dx * 0.01;
     });
 
-    // Déterminer quelle émotion est la plus proche du haut
     final anglePerEmotion = (2 * math.pi) / widget.emotions.length;
     final normalizedRotation = _currentRotation % (2 * math.pi);
     final closestIndex = ((-normalizedRotation / anglePerEmotion).round()) % widget.emotions.length;
@@ -139,7 +132,6 @@ class _EmotionWheelState extends State<EmotionWheel>
   void _handlePanEnd(DragEndDetails details) {
     _isDragging = false;
     
-    // Snap à l'émotion la plus proche
     final anglePerEmotion = (2 * math.pi) / widget.emotions.length;
     final targetAngle = -_selectedIndex * anglePerEmotion;
     
@@ -153,7 +145,6 @@ class _EmotionWheelState extends State<EmotionWheel>
 
     _targetRotation = targetAngle;
     _controller.forward(from: 0.0);
-    
     HapticFeedback.mediumImpact();
   }
 
@@ -162,75 +153,56 @@ class _EmotionWheelState extends State<EmotionWheel>
     _controller.dispose();
     super.dispose();
   }
-  IconData _getEmotionIcon(String emotionName) {
-    final icons = {
-      // Positif
-      'heureux': Icons.sentiment_very_satisfied_rounded,
-      'joyeux': Icons.emoji_emotions_rounded,
-      'calme': Icons.spa_rounded,
-      'serein': Icons.self_improvement_rounded,
-      'énergique': Icons.flash_on_rounded,
-      'motivé': Icons.local_fire_department_rounded,
-      'reconnaissant': Icons.favorite_rounded,
-      'aimant': Icons.volunteer_activism_rounded,
-      'content': Icons.sentiment_satisfied_alt_rounded,
-      'paisible': Icons.water_drop_rounded,
-      
-      // Négatif
-      'anxieux': Icons.psychology_alt_rounded,
-      'inquiet': Icons.sentiment_dissatisfied_rounded,
-      'triste': Icons.sentiment_very_dissatisfied_rounded,
-      'mélancolique': Icons.cloud_rounded,
-      'en colère': Icons.local_fire_department_rounded,
-      'irrité': Icons.whatshot_rounded,
-      'fatigué': Icons.nights_stay_rounded,
-      'épuisé': Icons.battery_0_bar_rounded,
-      'stressé': Icons.warning_amber_rounded,
-      'dépassé': Icons.trending_down_rounded,
-      
-      // Neutre
-      'confus': Icons.help_outline_rounded,
-      'perdu': Icons.explore_off_rounded,
-      'nostalgique': Icons.schedule_rounded,
-      'pensif': Icons.cloud_queue_rounded,
-    };
-    
-    return icons[emotionName.toLowerCase()] ?? Icons.sentiment_neutral_rounded;
-  }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final wheelSize = math.min(size.width, size.height) * 0.75;
+    final wheelSize = math.min(size.width, size.height) * 0.68; // ✅ RÉDUIT
 
     return Column(
       children: [
-        // Indicateur en haut (triangle pointant vers l'émotion sélectionnée)
+        // 🎯 Label cliquable harmonisé
         Container(
-          margin: EdgeInsets.only(bottom: 20),
+          margin: EdgeInsets.only(bottom: 16), // ✅ RÉDUIT
           child: Column(
             children: [
               Icon(
                 Icons.arrow_drop_down,
-                size: 48,
+                size: 40, // ✅ RÉDUIT
                 color: AppColors.primary,
               ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.primary.withOpacity(0.3),
-                    width: 2,
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.heavyImpact();
+                  widget.onEmotionSelected(widget.emotions[_selectedIndex]);
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.streakGradient, // ✅ HARMONISÉ
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
-                ),
-                child: Text(
-                  widget.emotions[_selectedIndex].name,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.emotions[_selectedIndex].name,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Icon(Icons.check_circle, color: Colors.white, size: 20),
+                    ],
                   ),
                 ),
               ),
@@ -248,7 +220,6 @@ class _EmotionWheelState extends State<EmotionWheel>
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Cercle de fond
                 Container(
                   width: wheelSize,
                   height: wheelSize,
@@ -267,7 +238,6 @@ class _EmotionWheelState extends State<EmotionWheel>
                   ),
                 ),
 
-                // Émotions disposées en cercle
                 ...List.generate(widget.emotions.length, (index) {
                   return _buildEmotionItem(
                     emotion: widget.emotions[index],
@@ -277,7 +247,6 @@ class _EmotionWheelState extends State<EmotionWheel>
                   );
                 }),
 
-                // Centre de la roue (décoratif)
                 Container(
                   width: 60,
                   height: 60,
@@ -303,42 +272,7 @@ class _EmotionWheelState extends State<EmotionWheel>
           ),
         ),
 
-        SizedBox(height: 40),
-
-        // Bouton de validation
-        Container(
-          width: 200,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: () {
-              HapticFeedback.heavyImpact();
-              widget.onEmotionSelected(widget.emotions[_selectedIndex]);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(28),
-              ),
-              elevation: 8,
-              shadowColor: AppColors.primary.withOpacity(0.4),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Valider',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(width: 8),
-                Icon(Icons.check_circle, size: 24),
-              ],
-            ),
-          ),
-        ),
+        // ✅ BOUTON VALIDER SUPPRIMÉ
       ],
     );
   }
@@ -356,11 +290,9 @@ class _EmotionWheelState extends State<EmotionWheel>
     final x = radius * math.cos(angle - math.pi / 2);
     final y = radius * math.sin(angle - math.pi / 2);
 
-    // Calculer la distance de cet item par rapport au haut (position sélectionnée)
     final distanceFromTop = (angle - math.pi / 2).abs() % (2 * math.pi);
     final normalizedDistance = math.min(distanceFromTop, 2 * math.pi - distanceFromTop);
     
-    // Plus l'item est proche du haut, plus il est grand
     final scale = 1.0 - (normalizedDistance / math.pi) * 0.4;
     final opacity = 0.5 + (scale - 0.6) * 1.25;
     
@@ -396,13 +328,11 @@ class _EmotionWheelState extends State<EmotionWheel>
                 ],
               ),
               child: Center(
-                child: Center(
-                  child: Text(
-                    emotion.emoji,  // ✅ Vrai emoji
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontFamily: 'Noto Color Emoji',
-                    ),
+                child: Text(
+                  emotion.emoji,
+                  style: TextStyle(
+                    fontSize: 48,
+                    fontFamily: 'Noto Color Emoji',
                   ),
                 ),
               ),

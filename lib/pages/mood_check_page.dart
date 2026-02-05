@@ -9,8 +9,6 @@ import '../widgets/emotion_wheel.dart';
 import '../widgets/emotion_alert_widget.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/badge_service.dart';
-import '../widgets/badge_unlock_dialog.dart';
 import '../utils/badge_checker.dart';
 
 class MoodCheckPage extends StatefulWidget {
@@ -21,20 +19,19 @@ class MoodCheckPage extends StatefulWidget {
 class _MoodCheckPageState extends State<MoodCheckPage> {
   Future<List<Emotion>>? _emotionsFuture;
   Future<UserProfile?>? _profileFuture;
-  Future<Map<String, dynamic>>? _emotionAnalysisFuture; // ✅ NOUVEAU
+  Future<Map<String, dynamic>>? _emotionAnalysisFuture;
   
   bool _isExpressMode = false;
-  bool _showAlert = true; // ✅ NOUVEAU : Contrôle l'affichage de l'alerte
+  bool _showAlert = true;
   
   @override
   void initState() {
     super.initState();
     _emotionsFuture = SupabaseService.getEmotions();
     _profileFuture = SupabaseService.getProfile();
-    _loadEmotionAnalysis(); // ✅ NOUVEAU
+    _loadEmotionAnalysis();
   }
 
-  // ✅ NOUVEAU : Charger l'analyse des émotions
   Future<void> _loadEmotionAnalysis() async {
     final shouldShow = await EmotionAnalysisService.shouldShowAlert();
     if (shouldShow) {
@@ -42,10 +39,6 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
         _emotionAnalysisFuture = EmotionAnalysisService.analyzeRecentEmotions();
       });
     }
-  }
-
-  Color _getEmotionColor(String emotionName) {
-    return AppColors.emotions[emotionName.toLowerCase()] ?? AppColors.primary;
   }
 
   Future<void> _showExpressSuccess(String emotionName) async {
@@ -73,26 +66,12 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
         ),
       ),
     );
-    // Vérifier nouveaux badges
-    final newBadges = await BadgeService.checkAndUnlockBadges();
-    
-    // Afficher animation pour chaque nouveau badge
-    for (var badge in newBadges) {
-      if (mounted) {
-        await showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => BadgeUnlockDialog(badge: badge),
-        );
-      }
-    }
-    // 🆕 Version simplifiée
+
     await BadgeChecker.checkAndShowBadges(context);
     
-    // Recharger le profil ET l'analyse
     setState(() {
       _profileFuture = SupabaseService.getProfile();
-      _loadEmotionAnalysis(); // ✅ Recharger l'analyse après une nouvelle émotion
+      _loadEmotionAnalysis();
     });
   }
 
@@ -108,7 +87,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                // Header avec Stats et Settings
+                // Header
                 Padding(
                   padding: EdgeInsets.all(20),
                   child: Row(
@@ -124,7 +103,6 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                       ),
                       Row(
                         children: [
-                          // Bouton Stats
                           Container(
                             decoration: BoxDecoration(
                               color: Colors.white,
@@ -138,19 +116,12 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                               ],
                             ),
                             child: IconButton(
-                              icon: Icon(
-                                Icons.bar_chart,
-                                color: AppColors.primary,
-                                size: 24,
-                              ),
-                              onPressed: () {
-                                Navigator.pushNamed(context, AppRoutes.dashboard);
-                              },
+                              icon: Icon(Icons.bar_chart, color: AppColors.primary, size: 24),
+                              onPressed: () => Navigator.pushNamed(context, AppRoutes.dashboard),
                               tooltip: 'Mes statistiques',
                             ),
                           ),
                           SizedBox(width: 12),
-                          // Bouton Settings
                           Container(
                             decoration: BoxDecoration(
                               color: Colors.white,
@@ -164,14 +135,8 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                               ],
                             ),
                             child: IconButton(
-                              icon: Icon(
-                                Icons.settings,
-                                color: AppColors.primary,
-                                size: 24,
-                              ),
-                              onPressed: () {
-                                Navigator.pushNamed(context, AppRoutes.settings);
-                              },
+                              icon: Icon(Icons.settings, color: AppColors.primary, size: 24),
+                              onPressed: () => Navigator.pushNamed(context, AppRoutes.settings),
                               tooltip: 'Paramètres',
                             ),
                           ),
@@ -181,7 +146,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   ),
                 ),
 
-                // Widget Streak et Stats
+                // 🎨 Widget Streak - COULEURS HARMONISÉES
                 FutureBuilder<UserProfile?>(
                   future: _profileFuture,
                   builder: (context, snapshot) {
@@ -195,22 +160,9 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                       margin: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                       padding: EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            AppColors.primary,
-                            AppColors.secondary,
-                          ],
-                        ),
+                        gradient: AppColors.streakGradient, // ✅ HARMONISÉ
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withOpacity(0.3),
-                            blurRadius: 15,
-                            offset: Offset(0, 8),
-                          ),
-                        ],
+                        boxShadow: AppColors.cardShadow,
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -238,7 +190,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   },
                 ),
 
-                // ✅ NOUVEAU : Widget d'alerte émotionnelle
+                // Alerte émotionnelle
                 if (_showAlert)
                   FutureBuilder<Map<String, dynamic>>(
                     future: _emotionAnalysisFuture,
@@ -261,7 +213,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                     },
                   ),
 
-                SizedBox(height: 16),
+                SizedBox(height: 12),
 
                 // Toggle Mode Express
                 Container(
@@ -323,29 +275,27 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   ),
                 ),
 
-                SizedBox(height: 5),
+                SizedBox(height: 8),
 
                 Text(
                   _isExpressMode 
                       ? 'Sélectionne ton émotion et c\'est tout !'
                       : 'Fais tourner la roue et sélectionne',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     color: AppColors.textMedium,
                   ),
                 ),
 
-                SizedBox(height: 2),
+                SizedBox(height: 8),
 
-                // Roue des émotions
+                // 🎯 Roue des émotions - RÉDUITE
                 FutureBuilder<List<Emotion>>(
                   future: _emotionsFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primary,
-                        ),
+                        child: CircularProgressIndicator(color: AppColors.primary),
                       );
                     }
 
@@ -364,10 +314,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                         HapticFeedback.mediumImpact();
                         
                         if (_isExpressMode) {
-                          // MODE EXPRESS
-                          final moodLog = await SupabaseService.createMoodLog(
-                            emotionId: emotion.id,
-                          );
+                          final moodLog = await SupabaseService.createMoodLog(emotionId: emotion.id);
                           
                           if (moodLog == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -382,10 +329,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                           _showExpressSuccess(emotion.name);
                           
                         } else {
-                          // MODE STANDARD
-                          final moodLog = await SupabaseService.createMoodLog(
-                            emotionId: emotion.id,
-                          );
+                          final moodLog = await SupabaseService.createMoodLog(emotionId: emotion.id);
                           
                           if (moodLog == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -397,10 +341,8 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                             return;
                           }
 
-                          // 🆕 Vérifier badges (version simplifiée)
                           await BadgeChecker.checkAndShowBadges(context);
-
-                                                    
+                          
                           Navigator.pushNamed(
                             context,
                             AppRoutes.context,
@@ -415,10 +357,32 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   },
                 ),
                 
-                SizedBox(height: 10),
+                SizedBox(height: 12),
+                
+                // 🆕 Bouton Aide au sommeil - NORMAL AU-DESSUS
+                Container(
+                  width: double.infinity,
+                  margin: EdgeInsets.symmetric(horizontal: 32),
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pushNamed(context, AppRoutes.sleep),
+                    icon: Icon(Icons.nightlight, size: 20),
+                    label: Text('Aide au sommeil'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                SizedBox(height: 8),
                 
                 // Bouton Feedback
                 Container(
+                  width: double.infinity,
                   margin: EdgeInsets.symmetric(horizontal: 32),
                   child: ElevatedButton.icon(
                     onPressed: () async {
@@ -436,7 +400,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.warning,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -444,11 +408,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   ),
                 ),
                 
-                SizedBox(height: 10),
-                
-                _buildSleepLink(),
-                
-                SizedBox(height: 120),
+                SizedBox(height: 20),
               ],
             ),
           ),
@@ -485,25 +445,6 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
           textAlign: TextAlign.center,
         ),
       ],
-    );
-  }
-  
-  Widget _buildSleepLink() {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 24),
-      child: TextButton(
-        onPressed: () {
-          Navigator.pushNamed(context, AppRoutes.sleep);
-        },
-        child: Text(
-          "Aide au sommeil 🌙",
-          style: TextStyle(
-            color: AppColors.primary,
-            fontSize: 16,
-            decoration: TextDecoration.underline,
-          ),
-        ),
-      ),
     );
   }
 }
