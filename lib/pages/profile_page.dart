@@ -556,6 +556,14 @@ class _ProfilePageState extends State<ProfilePage> {
                               SizedBox(height: 24),
                             ],
 
+                            ListTile(
+                              leading: Icon(Icons.emoji_events, color: AppColors.primary),
+                              title: Text('Mes Badges'),
+                              subtitle: Text('Consulte tes succès'),
+                              trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                              onTap: () => Navigator.pushNamed(context, '/badges'),
+                            ),
+
                             // Section Thèmes (bientôt disponible)
                             Container(
                               margin: EdgeInsets.symmetric(horizontal: 20),
