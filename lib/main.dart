@@ -27,17 +27,20 @@ void main() async {
    await WebNotificationService.initialize();
    WebNotificationService.setupListeners();
   }
- 
 
+ 
   AudioPreloader.preloadAudio();
 
   // Initialiser timezone (seulement si pas web)
   if (!kIsWeb) {
     tz.initializeTimeZones();
   }
+
+  await AppColors.loadTheme();
   
   runApp(MyApp());
 }
+
 
 class MyApp extends StatelessWidget {
   @override

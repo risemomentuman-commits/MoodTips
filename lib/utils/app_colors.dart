@@ -1,12 +1,91 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AppColors {
-  // ========== PALETTE "NATURE APAISANTE" ==========
-  // Tons naturels universels inspirés de la nature
-  // Vert sauge + Terre + Rose argile
-  // Parfait pour homme ET femme
+  // ========== SYSTÈME DE THÈMES ==========
   
-  // ========== BASE NATURELLE (90%) ==========
+  static final Map<String, ThemePalette> _themes = {
+    'sage': ThemePalette(
+      name: 'Vert Sauge',
+      emoji: '🌿',
+      primary: Color(0xFF88A77E),
+      primaryDark: Color(0xFF6B8C63),
+      primaryLight: Color(0xFFA8BFA0),
+      secondary: Color(0xFFC19A6B),
+      accent: Color(0xFF9DB5AC),
+    ),
+    'lavender': ThemePalette(
+      name: 'Lavande & Rose',
+      emoji: '💜',
+      primary: Color(0xFFB8A4D4),
+      primaryDark: Color(0xFF9B7EBD),
+      primaryLight: Color(0xFFD4C7E8),
+      secondary: Color(0xFFF4C7D8),
+      accent: Color(0xFFE8A8C7),
+    ),
+    'ocean': ThemePalette(
+      name: 'Océan Apaisant',
+      emoji: '🌊',
+      primary: Color(0xFF89B5D9),
+      primaryDark: Color(0xFF5B9BD5),
+      primaryLight: Color(0xFFB8D4E8),
+      secondary: Color(0xFF9FCDC4),
+      accent: Color(0xFF7AB8AC),
+    ),
+    'peach': ThemePalette(
+      name: 'Pêche Douce',
+      emoji: '🍑',
+      primary: Color(0xFFF4B4A4),
+      primaryDark: Color(0xFFE89685),
+      primaryLight: Color(0xFFFFD6CC),
+      secondary: Color(0xFFFFE4D6),
+      accent: Color(0xFFFFB8A0),
+    ),
+    'mint': ThemePalette(
+      name: 'Menthe Fraîche',
+      emoji: '🌱',
+      primary: Color(0xFF9FCDC4),
+      primaryDark: Color(0xFF7AB8AC),
+      primaryLight: Color(0xFFD4E9E4),
+      secondary: Color(0xFFB8E6D5),
+      accent: Color(0xFF88D5C0),
+    ),
+    'sunset': ThemePalette(
+      name: 'Coucher de Soleil',
+      emoji: '🌅',
+      primary: Color(0xFFFF9A8B),
+      primaryDark: Color(0xFFFF7B6B),
+      primaryLight: Color(0xFFFFBFB3),
+      secondary: Color(0xFFFFDAB9),
+      accent: Color(0xFFFFB88C),
+    ),
+  };
+
+  static String _currentThemeId = 'sage';
+  static ThemePalette get _currentTheme => _themes[_currentThemeId]!;
+
+  // ========== COULEURS DYNAMIQUES (changent avec le thème) ==========
+  
+  static Color get primary => _currentTheme.primary;
+  static Color get primaryDark => _currentTheme.primaryDark;
+  static Color get primaryLight => _currentTheme.primaryLight;
+  static Color get primaryUltraLight => _currentTheme.primary.withOpacity(0.2);
+  static Color get secondary => _currentTheme.secondary;
+  static Color get accent => _currentTheme.accent;
+
+  static LinearGradient get primaryGradient => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [primary, primaryDark],
+      );
+
+  static LinearGradient get streakGradient => LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [primary, secondary],
+      );
+
+  // ========== COULEURS FIXES (ne changent pas) ==========
   
   /// Fond principal - Beige nuage (aurore matinale)
   static const Color backgroundPrimary = Color(0xFFF7F5F2);
@@ -35,167 +114,103 @@ class AppColors {
   /// Bordures actives - Taupe clair
   static const Color borderActive = Color(0xFFD4D0C8);
   
-  // ========== COULEUR PRIMAIRE NATURELLE ==========
-  
-  /// Vert sauge - Nature, croissance, paix
-  /// ✅ Universel (ni masculin ni féminin)
-  /// ✅ Apaisant (associé à la nature)
-  /// ✅ Doux (pas agressif)
-  static const Color primary = Color(0xFF88A77E);
-  
-  /// Vert sauge foncé - Hover, états actifs
-  static const Color primaryDark = Color(0xFF6B8C63);
-  
-  /// Vert sauge clair - Backgrounds légers
-  static const Color primaryLight = Color(0xFFA8BFA0);
-  
-  /// Vert sauge ultra clair - Hover subtil
-  static const Color primaryUltraLight = Color(0xFFD4E2CF);
-  
-  // ========== ACCENTS NATURELS (10%) ==========
+  // ========== ACCENTS NATURELS FIXES ==========
   
   /// Terre de sienne - Chaleur, humanité, réconfort
   static const Color warmAccent = Color(0xFFC19A6B);
-  
-  /// Terre foncée
   static const Color warmAccentDark = Color(0xFFA77D52);
-  
-  /// Terre claire
   static const Color warmAccentLight = Color(0xFFD9BF9E);
   
   /// Rose argile - Douceur féminine subtile
   static const Color softAccent = Color(0xFFD4ACA0);
-  
-  /// Rose argile foncé
   static const Color softAccentDark = Color(0xFFBF9488);
-  
-  /// Rose argile clair
   static const Color softAccentLight = Color(0xFFE8CFC7);
   
   /// Bleu-vert eau - Fraîcheur masculine subtile
   static const Color freshAccent = Color(0xFF9DB5AC);
-  
-  /// Bleu-vert foncé
   static const Color freshAccentDark = Color(0xFF7D9B8F);
-  
-  /// Bleu-vert clair
   static const Color freshAccentLight = Color(0xFFC2D5CD);
   
   // ========== COULEURS SYSTÈME ==========
   
-  /// Succès - Vert nature
   static const Color success = Color(0xFF7FA677);
-  
-  /// Erreur - Terracotta doux (pas rouge agressif)
   static const Color error = Color(0xFFD17A6C);
-  
-  /// Warning - Ocre naturel
   static const Color warning = Color(0xFFD9A96B);
-  
-  /// Info - Bleu-vert calme
   static const Color info = Color(0xFF88B5A8);
   
-  // ========== CATÉGORIES (Palette naturelle) ==========
+  // ========== CATÉGORIES ==========
   
   static const Map<String, Color> categories = {
-    'respiration': Color(0xFF9DB5AC),  // Bleu-vert eau (souffle)
-    'mouvement': Color(0xFF88A77E),    // Vert sauge (nature)
-    'mental': Color(0xFFA88F9E),       // Mauve taupe (profondeur)
-    'musique': Color(0xFFD4ACA0),      // Rose argile (créativité)
+    'respiration': Color(0xFF9DB5AC),
+    'mouvement': Color(0xFF88A77E),
+    'mental': Color(0xFFA88F9E),
+    'musique': Color(0xFFD4ACA0),
   };
   
-  // ========== ÉMOTIONS (Tons naturels doux) ==========
+  // ========== ÉMOTIONS ==========
   
   static const Map<String, Color> emotions = {
-    // Positives - Tons chauds naturels
-    'joyeux': Color(0xFFE8C594),       // Miel doré
-    'heureux': Color(0xFFD9BF9E),      // Sable chaud
-    'calme': Color(0xFFA8BFA0),        // Vert pâle
-    'confiant': Color(0xFF88A77E),     // Vert sauge
-    'énergique': Color(0xFFD9A96B),    // Ocre vif
-    
-    // Négatives - Tons froids apaisés
-    'triste': Color(0xFFA8B5C2),       // Gris-bleu pâle
-    'anxieux': Color(0xFFB8ADBA),      // Mauve grisé
-    'anxiété': Color(0xFFB8ADBA),      // Alias
-    'en_colere': Color(0xFFD4ACA0),    // Rose argile
-    'colère': Color(0xFFD4ACA0),       // Alias
-    'stress': Color(0xFF9DB5AC),       // Bleu-vert
-    'fatigue': Color(0xFFC7C2BA),      // Taupe pâle
-    'débordé': Color(0xFFD4D0C8),      // Beige gris
-    'frustré': Color(0xFFCFAD8F),      // Caramel pâle
+    'joyeux': Color(0xFFE8C594),
+    'heureux': Color(0xFFD9BF9E),
+    'calme': Color(0xFFA8BFA0),
+    'confiant': Color(0xFF88A77E),
+    'énergique': Color(0xFFD9A96B),
+    'triste': Color(0xFFA8B5C2),
+    'anxieux': Color(0xFFB8ADBA),
+    'anxiété': Color(0xFFB8ADBA),
+    'en_colere': Color(0xFFD4ACA0),
+    'colère': Color(0xFFD4ACA0),
+    'stress': Color(0xFF9DB5AC),
+    'fatigue': Color(0xFFC7C2BA),
+    'débordé': Color(0xFFD4D0C8),
+    'frustré': Color(0xFFCFAD8F),
   };
   
-  // ========== DÉGRADÉS NATURELS ==========
+  // ========== DÉGRADÉS FIXES ==========
   
-  /// Dégradé principal - Vert sauge
-  static const LinearGradient primaryGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [
-      Color(0xFF88A77E),  // Vert sauge
-      Color(0xFF6B8C63),  // Vert sauge foncé
-    ],
-  );
-  
-  /// Dégradé de fond - Beige doux
   static const LinearGradient backgroundGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFFF7F5F2),  // Beige nuage
-      Color(0xFFFFFEFC),  // Blanc crème
+      Color(0xFFF7F5F2),
+      Color(0xFFFFFEFC),
     ],
   );
   
-  /// Dégradé chaleur - Terre de sienne
   static const LinearGradient warmGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFFC19A6B),  // Terre
-      Color(0xFFA77D52),  // Terre foncée
+      Color(0xFFC19A6B),
+      Color(0xFFA77D52),
     ],
   );
   
-  /// Dégradé douceur - Rose argile
   static const LinearGradient softGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFFD4ACA0),  // Rose argile
-      Color(0xFFBF9488),  // Rose argile foncé
+      Color(0xFFD4ACA0),
+      Color(0xFFBF9488),
     ],
   );
   
-  /// Dégradé fraîcheur - Bleu-vert
   static const LinearGradient freshGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFF9DB5AC),  // Bleu-vert
-      Color(0xFF7D9B8F),  // Bleu-vert foncé
+      Color(0xFF9DB5AC),
+      Color(0xFF7D9B8F),
     ],
   );
   
-  /// Dégradé nature complète
   static const LinearGradient natureGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFF88A77E),  // Vert sauge
-      Color(0xFF9DB5AC),  // Bleu-vert
-      Color(0xFFC19A6B),  // Terre
-    ],
-  );
-
-  /// Dégradé streak (vert sauge → beige doré) - Comme sur la capture
-  static const LinearGradient streakGradient = LinearGradient(
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-    colors: [
-      Color(0xFF8B9D8B), // Vert sauge
-      Color(0xFFB8A888), // Beige doré
+      Color(0xFF88A77E),
+      Color(0xFF9DB5AC),
+      Color(0xFFC19A6B),
     ],
   );
   
@@ -204,24 +219,16 @@ class AppColors {
   static const Color background = backgroundPrimary;
   static const Color backgroundGrey = surfaceLight;
   static const Color textGrey = textMedium;
-  
-  /// Secondary = Terre de sienne (chaleur)
-  static const Color secondary = warmAccent;
-  
-  /// Accent = Bleu-vert (fraîcheur)
-  static const Color accent = freshAccent;
-  
-  // Anciens accents → Équivalents naturels
-  static const Color lavender = Color(0xFFA88F9E);  // Mauve taupe
+  static const Color lavender = Color(0xFFA88F9E);
   static const Color lavenderDark = Color(0xFF8F7687);
   static const Color rosePowder = softAccent;
   static const Color rosePowderDark = softAccentDark;
   
-  // ========== OMBRES NATURELLES SUBTILES ==========
+  // ========== OMBRES ==========
   
   static List<BoxShadow> get cardShadow => [
     BoxShadow(
-      color: textDark.withOpacity(0.06),  // Ombre verte subtile
+      color: textDark.withOpacity(0.06),
       blurRadius: 12,
       offset: Offset(0, 4),
     ),
@@ -237,7 +244,7 @@ class AppColors {
   
   static List<BoxShadow> get buttonShadow => [
     BoxShadow(
-      color: primary.withOpacity(0.20),  // Ombre vert sauge
+      color: primary.withOpacity(0.20),
       blurRadius: 12,
       offset: Offset(0, 4),
     ),
@@ -273,120 +280,60 @@ class AppColors {
     return color.withOpacity(opacity);
   }
   
-  // ========== GUIDE D'UTILISATION ==========
+  // ========== GESTION DES THÈMES ==========
   
-  /*
-  🌿 PALETTE "NATURE APAISANTE"
+  static List<MapEntry<String, ThemePalette>> get availableThemes =>
+      _themes.entries.toList();
+
+  static String get currentThemeId => _currentThemeId;
   
-  ================================
-  PHILOSOPHIE
-  ================================
+  static String get currentThemeName => _currentTheme.name;
   
-  "Inspiré par la nature, apaisant pour tous"
-  
-  - Tons terreux = Ancrage, stabilité
-  - Vert sauge = Croissance, paix, nature
-  - Rose argile = Douceur humaine
-  - Bleu-vert = Fraîcheur, clarté
-  - Beige = Neutralité absolue
-  
-  ✅ Universel : Homme ET Femme
-  ✅ Apaisant : Nature + Tons doux
-  ✅ Non agressif : Pas de couleurs vives
-  ✅ Contrasté : Éléments bien délimités
-  
-  ================================
-  RÉPARTITION DES COULEURS
-  ================================
-  
-  🌿 VERT SAUGE (#88A77E) - 60%
-  → Primary : Boutons, éléments d'action
-  → Associé à : Nature, croissance, paix
-  → Genre : Neutre absolu
-  
-  🏜️ TERRE DE SIENNE (#C19A6B) - 15%
-  → Accent chaleur : Célébrations, streak
-  → Associé à : Chaleur humaine, réconfort
-  → Genre : Neutre, légèrement masculin
-  
-  🌸 ROSE ARGILE (#D4ACA0) - 15%
-  → Accent douceur : Feedback positif
-  → Associé à : Douceur, humanité
-  → Genre : Neutre, légèrement féminin
-  
-  💧 BLEU-VERT (#9DB5AC) - 10%
-  → Accent fraîcheur : Respiration, calme
-  → Associé à : Eau, clarté, fraîcheur
-  → Genre : Neutre, légèrement masculin
-  
-  ================================
-  EXEMPLES D'UTILISATION
-  ================================
-  
-  ✅ Bouton principal (vert sauge) :
-  ElevatedButton(
-    style: ElevatedButton.styleFrom(
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
-    ),
-    child: Text('Valider'),
-  )
-  
-  ✅ Badge streak (terre) :
-  Container(
-    color: AppColors.warmAccent,
-    child: Row(
-      children: [
-        Icon(Icons.local_fire_department, color: Colors.white),
-        Text('3 jours', style: TextStyle(color: Colors.white)),
-      ],
-    ),
-  )
-  
-  ✅ Feedback positif (rose argile) :
-  Container(
-    decoration: BoxDecoration(
-      gradient: AppColors.softGradient,
-    ),
-    child: Text('Bravo ! 🎉', style: TextStyle(color: Colors.white)),
-  )
-  
-  ✅ Card respiration (bleu-vert) :
-  Container(
-    decoration: BoxDecoration(
-      color: AppColors.freshAccent.withOpacity(0.1),
-      border: Border.all(color: AppColors.freshAccent),
-    ),
-    child: Text('Respiration'),
-  )
-  
-  ✅ Fond de page (beige nuage) :
-  Scaffold(
-    backgroundColor: AppColors.backgroundPrimary,
-  )
-  
-  ================================
-  RÉSULTAT VISUEL
-  ================================
-  
-  🌿 Naturel : Évoque forêt, terre, végétation
-  🕊️ Apaisant : Tons doux, pas agressifs
-  ⚖️ Universel : Homme ET Femme se sentent bien
-  🎨 Contrasté : Cards blanches sur fond beige
-  💚 Vivant : Assez de couleur sans être trop
-  
-  Parfait pour une app de wellness mixte !
-  
-  ================================
-  ASSOCIATIONS ÉMOTIONNELLES
-  ================================
-  
-  Vert sauge → Nature, paix, croissance
-  Terre de sienne → Chaleur, ancrage, sécurité
-  Rose argile → Douceur, humanité, bienveillance
-  Bleu-vert → Clarté, fraîcheur, respiration
-  Beige → Neutralité, calme, repos
-  
-  🎯 Aucune couleur n'évoque la tristesse ou l'agressivité
-  */
+  static String get currentThemeEmoji => _currentTheme.emoji;
+
+  static Future<void> loadTheme() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _currentThemeId = prefs.getString('app_theme') ?? 'sage';
+      print('✅ Thème chargé: $_currentThemeId');
+    } catch (e) {
+      print('❌ Erreur chargement thème: $e');
+      _currentThemeId = 'sage';
+    }
+  }
+
+  static Future<void> setTheme(String themeId) async {
+    if (_themes.containsKey(themeId)) {
+      _currentThemeId = themeId;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('app_theme', themeId);
+        print('✅ Thème sauvegardé: $themeId');
+      } catch (e) {
+        print('❌ Erreur sauvegarde thème: $e');
+      }
+    }
+  }
+}
+
+// ========== PALETTE DE THÈME ==========
+
+class ThemePalette {
+  final String name;
+  final String emoji;
+  final Color primary;
+  final Color primaryDark;
+  final Color primaryLight;
+  final Color secondary;
+  final Color accent;
+
+  const ThemePalette({
+    required this.name,
+    required this.emoji,
+    required this.primary,
+    required this.primaryDark,
+    required this.primaryLight,
+    required this.secondary,
+    required this.accent,
+  });
 }

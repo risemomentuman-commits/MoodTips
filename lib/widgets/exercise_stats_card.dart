@@ -1,257 +1,222 @@
-// lib/widgets/exercise_stats_card.dart
-// Card Dashboard affichant les statistiques des exercices
-
 import 'package:flutter/material.dart';
-import '../services/exercise_stats_service.dart';
 import '../utils/app_colors.dart';
 
-class ExerciseStatsCard extends StatefulWidget {
-  @override
-  _ExerciseStatsCardState createState() => _ExerciseStatsCardState();
-}
+class ExerciseStatsCard extends StatelessWidget {
+  final int breathingCount;
+  final int movementCount;
+  final int mentalCount;
+  final int totalMinutes;
 
-class _ExerciseStatsCardState extends State<ExerciseStatsCard> {
-  ExerciseStats? _stats;
-  bool _isLoading = true;
-  
-  @override
-  void initState() {
-    super.initState();
-    _loadStats();
-  }
-  
-  Future<void> _loadStats() async {
-    final stats = await ExerciseStatsService.getExerciseStats();
-    if (mounted) {
-      setState(() {
-        _stats = stats;
-        _isLoading = false;
-      });
-    }
-  }
-  
+  const ExerciseStatsCard({
+    Key? key,
+    this.breathingCount = 0,
+    this.movementCount = 0,
+    this.mentalCount = 0,
+    this.totalMinutes = 0,
+  }) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Container(
-        margin: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        padding: EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: AppColors.cardShadow,
-        ),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    
-    if (_stats == null || _stats!.totalCompleted == 0) {
-      return SizedBox.shrink(); // Ne rien afficher si pas d'exercices
-    }
-    
+    final totalExercises = breathingCount + movementCount + mentalCount;
+
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: AppColors.streakGradient,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(20),
         boxShadow: AppColors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // 📊 En-tête
           Row(
             children: [
-              Icon(Icons.insights, color: Colors.white, size: 28),
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.fitness_center,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
+              ),
               SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  'Tes exercices',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Exercices pratiqués',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Cette semaine',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMedium,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          
+
           SizedBox(height: 20),
-          
-          // Stats principales
-          Row(
-            children: [
-              Expanded(
-                child: _buildMainStat(
-                  value: '${_stats!.totalCompleted}',
-                  label: 'Complétés',
-                  icon: Icons.check_circle,
-                ),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: _buildMainStat(
-                  value: '${_stats!.improvementRate.toInt()}%',
-                  label: 'Efficaces',
-                  icon: Icons.trending_up,
-                ),
-              ),
-            ],
-          ),
-          
-          SizedBox(height: 20),
-          
-          // Répartition des feedbacks
+
+          // 🎯 Total global
           Container(
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: Column(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildFeedbackRow('😊 Mieux', _stats!.betterCount, _stats!.totalCompleted, Color(0xFF10B981)),
-                SizedBox(height: 8),
-                _buildFeedbackRow('😐 Pareil', _stats!.sameCount, _stats!.totalCompleted, Color(0xFFD9A96B)),
-                SizedBox(height: 8),
-                _buildFeedbackRow('😔 Moins bien', _stats!.worseCount, _stats!.totalCompleted, Color(0xFFD17A6C)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '$totalExercises',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Temps',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          '${totalMinutes}min',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
+
+          SizedBox(height: 16),
+
+          // 📈 Détail par catégorie
+          _buildCategoryRow(
+            icon: '💨',
+            label: 'Respiration',
+            count: breathingCount,
+            color: AppColors.categories['respiration']!,
+          ),
           
-          // Top exercices
-          if (_stats!.topExercises.isNotEmpty) ...[
-            SizedBox(height: 20),
-            Text(
-              '⭐ Les plus efficaces',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 12),
-            ..._stats!.topExercises.map((exercise) => _buildTopExercise(exercise)),
-          ],
+          SizedBox(height: 12),
+          
+          _buildCategoryRow(
+            icon: '🏃',
+            label: 'Mouvement',
+            count: movementCount,
+            color: AppColors.categories['mouvement']!,
+          ),
+          
+          SizedBox(height: 12),
+          
+          _buildCategoryRow(
+            icon: '🧠',
+            label: 'Mental',
+            count: mentalCount,
+            color: AppColors.categories['mental']!,
+          ),
         ],
       ),
     );
   }
-  
-  Widget _buildMainStat({
-    required String value,
+
+  Widget _buildCategoryRow({
+    required String icon,
     required String label,
-    required IconData icon,
+    required int count,
+    required Color color,
   }) {
     return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: Colors.white, size: 32),
-          SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildFeedbackRow(String label, int count, int total, Color color) {
-    final percentage = total > 0 ? (count / total * 100) : 0;
-    
-    return Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-            ),
-          ),
-        ),
-        Text(
-          '$count (${percentage.toInt()}%)',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildTopExercise(TopExercise exercise) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(10),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
-          Icon(Icons.star, color: Color(0xFFFBBF24), size: 20),
-          SizedBox(width: 8),
+          Text(
+            icon,
+            style: TextStyle(fontSize: 24),
+          ),
+          SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  exercise.title,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  '${exercise.timesCompleted}x complété',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textDark,
+              ),
             ),
           ),
-          Text(
-            '${exercise.successRate.toInt()}%',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
