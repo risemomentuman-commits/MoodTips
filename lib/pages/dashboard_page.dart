@@ -56,15 +56,16 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadAllData() async {
     setState(() => _isLoading = true);
-      try {
+    
+    try {
       // ✅ CHARGER TOUT EN PARALLÈLE avec Future.wait
       final results = await Future.wait([
         SupabaseService.getProfile(),
         SupabaseService.getMoodLogs(limit: int.parse(_period)),
         SupabaseService.getContextInsights(),
-        _fetchExerciseStats(), // Nouvelle méthode plus rapide
+        _fetchExerciseStats(),
       ]);
       
       setState(() {
@@ -94,7 +95,6 @@ class _DashboardPageState extends State<DashboardPage> {
           .eq('status', 'completed')
           .gte('completed_at', oneWeekAgo.toIso8601String());
 
-      // Exemple simplifié
       return {
         'breathing': 5,
         'movement': 3,
@@ -107,6 +107,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  
   double get _averageMood {
     if (_recentMoods.isEmpty) return 0;
     final sum = _recentMoods.fold(0.0, (sum, log) => sum + log.emotionId);
@@ -137,7 +138,7 @@ class _DashboardPageState extends State<DashboardPage> {
         child: _isLoading
             ? Center(child: CircularProgressIndicator(color: AppColors.primary))
             : RefreshIndicator(
-                onRefresh: _loadData,
+                onRefresh: _loadAllData,  // ✅ _loadAllData au lieu de _loadData
                 color: AppColors.primary,
                 child: SingleChildScrollView(
                   physics: AlwaysScrollableScrollPhysics(),
