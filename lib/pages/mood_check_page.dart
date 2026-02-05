@@ -103,8 +103,8 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              AppColors.primary.withOpacity(0.05),      // ✅ Touche subtile de la couleur du thème
-              AppColors.secondary.withOpacity(0.03),    // ✅ Encore plus léger
+              AppColors.primary.withOpacity(0.15),      // ✅ Touche subtile de la couleur du thème
+              AppColors.secondary.withOpacity(0.09),    // ✅ Encore plus léger
               AppColors.backgroundPrimary,              // ✅ Retour au beige naturel
             ],
           ),

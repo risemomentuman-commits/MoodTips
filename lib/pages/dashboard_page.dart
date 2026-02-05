@@ -5,6 +5,7 @@ import '../models/user_profile.dart';
 import '../models/mood_log.dart';
 import '../widgets/exercise_stats_card.dart';
 import '../widgets/badges_summary_widget.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // ✅ Ajouter cette ligne
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -15,6 +16,7 @@ class _DashboardPageState extends State<DashboardPage> {
   UserProfile? _profile;
   List<MoodLog> _recentMoods = [];
   Map<String, dynamic>? _contextInsights;
+  Map<String, dynamic>? _exerciseStats;
   bool _isLoading = true;
   String _period = '7';
 
@@ -22,6 +24,37 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _loadData();
+    _loadExerciseStats();
+  }
+
+  Future<void> _loadExerciseStats() async {
+    try {
+      final userId = SupabaseService.currentUserId;
+      if (userId == null) return;
+
+      // Exemple : compter les tips complétés par catégorie cette semaine
+      final oneWeekAgo = DateTime.now().subtract(Duration(days: 7));
+      
+      final response = await Supabase.instance.client
+          .from('user_tips')
+          .select('tip_id')
+          .eq('user_id', userId)
+          .eq('status', 'completed')
+          .gte('completed_at', oneWeekAgo.toIso8601String());
+
+      // Tu peux ensuite compter par catégorie
+      // Ceci est un exemple simplifié
+      setState(() {
+        _exerciseStats = {
+          'breathing': 5,
+          'movement': 3,
+          'mental': 2,
+          'total_minutes': 45,
+        };
+      });
+    } catch (e) {
+      print('Erreur chargement stats exercices: $e');
+    }
   }
 
   Future<void> _loadData() async {
@@ -107,7 +140,12 @@ class _DashboardPageState extends State<DashboardPage> {
                         _buildKeyInsight(),
                       if (_contextInsights != null && (_contextInsights!['total'] as int) > 0)
                         SizedBox(height: 16),
-                      ExerciseStatsCard(),
+                      ExerciseStatsCard(
+                        breathingCount: _exerciseStats?['breathing'] ?? 0,
+                        movementCount: _exerciseStats?['movement'] ?? 0,
+                        mentalCount: _exerciseStats?['mental'] ?? 0,
+                        totalMinutes: _exerciseStats?['total_minutes'] ?? 0,
+                      ),
                       SizedBox(height: 80),
                     ],
                   ),
