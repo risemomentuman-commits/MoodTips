@@ -147,7 +147,7 @@ class _MyAppState extends State<MyApp> {
             case AppStartDestination.onboarding:
               return OnboardingSlidesPage();
             case AppStartDestination.home:
-              return MoodCheckPage(key: ValueKey(AppColors.currentThemeId)); // ✅ Force rebuild
+              return MoodCheckPage(key: MoodCheckPage.pageKey);
           }
         },
       ),

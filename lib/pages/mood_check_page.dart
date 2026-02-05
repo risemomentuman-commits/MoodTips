@@ -13,6 +13,15 @@ import '../utils/badge_checker.dart';
 
 class MoodCheckPage extends StatefulWidget {
    const MoodCheckPage({Key? key}) : super(key: key); // ✅ Accepte maintenant une clé
+
+   // ✅ Clé globale pour forcer le refresh
+  static final GlobalKey<_MoodCheckPageState> pageKey = GlobalKey<_MoodCheckPageState>();
+
+  // ✅ Méthode pour recharger la page
+  static void reload() {
+    pageKey.currentState?.reload();
+  }
+
   @override
   _MoodCheckPageState createState() => _MoodCheckPageState();
 }
@@ -31,6 +40,14 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
     _emotionsFuture = SupabaseService.getEmotions();
     _profileFuture = SupabaseService.getProfile();
     _loadEmotionAnalysis();
+  }
+
+  void reload() {
+    setState(() {
+      // Force le rebuild complet
+      _profileFuture = SupabaseService.getProfile();
+      _emotionsFuture = SupabaseService.getEmotions();
+    });
   }
 
   Future<void> _loadEmotionAnalysis() async {

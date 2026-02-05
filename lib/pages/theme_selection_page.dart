@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../utils/app_colors.dart';
 import '../main.dart'; // ✅ Pour accéder à MyApp.reload()
+import '../pages/mood_check_page.dart';
 
 class ThemeSelectionPage extends StatefulWidget {
   const ThemeSelectionPage({Key? key}) : super(key: key);
@@ -168,6 +169,7 @@ class _ThemeSelectionPageState extends State<ThemeSelectionPage>
         
         // ✅ Recharger toute l'app
         MyApp.reload();
+        MoodCheckPage.reload();
         
         await Future.delayed(Duration(milliseconds: 200));
         
