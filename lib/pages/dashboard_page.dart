@@ -58,6 +58,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _loadAllData() async {
     setState(() => _isLoading = true);
+
+    final stopwatch = Stopwatch()..start(); // ✅ Mesurer le temps
     
     try {
       // ✅ CHARGER TOUT EN PARALLÈLE avec Future.wait
@@ -136,8 +138,8 @@ class _DashboardPageState extends State<DashboardPage> {
       backgroundColor: AppColors.backgroundPrimary,
       body: SafeArea(
         child: _isLoading
-            ? Center(child: CircularProgressIndicator(color: AppColors.primary))
-            : RefreshIndicator(
+          ? _buildSkeletonLoader() // ✅ Skeleton au lieu du spinner
+          : RefreshIndicator(
                 onRefresh: _loadAllData,  // ✅ _loadAllData au lieu de _loadData
                 color: AppColors.primary,
                 child: SingleChildScrollView(
@@ -190,6 +192,78 @@ class _DashboardPageState extends State<DashboardPage> {
         backgroundColor: AppColors.primary,
         icon: Icon(Icons.favorite, color: Colors.white),
         label: Text('Check-in', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonLoader() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header skeleton
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              SizedBox(width: 12),
+              Container(
+                width: 150,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ],
+          ),
+          
+          SizedBox(height: 24),
+          
+          // Hero card skeleton
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Center(
+              child: CircularProgressIndicator(
+                color: AppColors.primary,
+                strokeWidth: 2,
+              ),
+            ),
+          ),
+          
+          SizedBox(height: 16),
+          
+          // Badges skeleton
+          Container(
+            height: 120,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          
+          SizedBox(height: 16),
+          
+          // Exercise stats skeleton
+          Container(
+            height: 280,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+        ],
       ),
     );
   }
