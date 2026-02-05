@@ -162,23 +162,18 @@ class _ThemeSelectionPageState extends State<ThemeSelectionPage>
   }) {
     return GestureDetector(
       onTap: () async {
-        // Feedback haptique
         HapticFeedback.mediumImpact();
-
-        // Mettre à jour l'UI immédiatement
         setState(() => _selectedTheme = themeId);
-
-        // Sauvegarder le thème
         await AppColors.setTheme(themeId);
-
+        
+        // ✅ Recharger toute l'app
         MyApp.reload();
-
-        // Attendre un peu pour l'animation
-        await Future.delayed(Duration(milliseconds: 300));
-
-        // Retourner true pour indiquer un changement
+        
+        await Future.delayed(Duration(milliseconds: 200));
+        
         if (mounted) {
-          Navigator.pop(context, true);
+          // ✅ Pop jusqu'à revenir à MoodCheckPage (home)
+          Navigator.popUntil(context, (route) => route.isFirst);
         }
       },
       child: AnimatedContainer(
