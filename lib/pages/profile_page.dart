@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../services/supabase_service.dart';
 import '../utils/app_colors.dart';
 import '../models/user_profile.dart';
@@ -18,7 +21,15 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isUploadingPhoto = false;
   String? _userEmail;
   String? _photoUrl;
+
   final ImagePicker _picker = ImagePicker();
+
+  // ✅ Chemin FIXE (évite de remplir ton bucket avec 100 avatars)
+  String? _avatarStoragePath() {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return null;
+    return 'avatars/$userId/avatar.jpg';
+  }
 
   @override
   void initState() {
@@ -28,26 +39,26 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadProfile() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final user = Supabase.instance.client.auth.currentUser;
       _userEmail = user?.email;
-      
+
       // Charger l'URL de la photo si elle existe
       final metadata = user?.userMetadata;
       if (metadata != null && metadata['avatar_url'] != null) {
-        _photoUrl = metadata['avatar_url'];
+        _photoUrl = metadata['avatar_url'] as String?;
       }
-      
+
       final profile = await SupabaseService.getProfile();
-      
+
       if (profile != null) {
         setState(() {
           _profile = profile;
         });
       }
     } catch (e) {
-      print('Erreur chargement profil: $e');
+      debugPrint('Erreur chargement profil: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -56,11 +67,11 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _showPhotoOptions() async {
     showModalBottomSheet(
       context: context,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => Container(
-        padding: EdgeInsets.all(20),
+        padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -72,54 +83,60 @@ class _ProfilePageState extends State<ProfilePage> {
                 color: AppColors.textDark,
               ),
             ),
-            SizedBox(height: 20),
-            ListTile(
-              leading: Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  shape: BoxShape.circle,
+            const SizedBox(height: 20),
+
+            // ✅ Caméra uniquement sur mobile (sur Web c'est aléatoire)
+            if (!kIsWeb)
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.camera_alt, color: AppColors.primary),
                 ),
-                child: Icon(Icons.camera_alt, color: AppColors.primary),
+                title: const Text('Prendre une photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
               ),
-              title: Text('Prendre une photo'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.camera);
-              },
-            ),
+
             ListTile(
               leading: Container(
-                padding: EdgeInsets.all(8),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: AppColors.secondary.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.photo_library, color: AppColors.secondary),
               ),
-              title: Text('Choisir dans la galerie'),
+              title: const Text('Choisir dans la galerie'),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.gallery);
               },
             ),
+
             if (_photoUrl != null)
               ListTile(
                 leading: Container(
-                  padding: EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: AppColors.error.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(Icons.delete, color: AppColors.error),
                 ),
-                title: Text('Supprimer la photo'),
+                title: const Text('Supprimer la photo'),
                 onTap: () {
                   Navigator.pop(context);
                   _deletePhoto();
                 },
               ),
-            SizedBox(height: 10),
+
+            const SizedBox(height: 10),
           ],
         ),
       ),
@@ -139,29 +156,35 @@ class _ProfilePageState extends State<ProfilePage> {
 
       setState(() => _isUploadingPhoto = true);
 
-      final file = File(image.path);
       final userId = Supabase.instance.client.auth.currentUser?.id;
-      
       if (userId == null) throw Exception('User not found');
 
-      // Upload vers Supabase Storage
-      final fileName = 'avatar_${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final storagePath = 'avatars/$fileName';
+      final storagePath = _avatarStoragePath();
+      if (storagePath == null) throw Exception('Storage path not available');
 
+      // ✅ Cross-platform: bytes (pas de File)
+      final Uint8List bytes = await image.readAsBytes();
+
+      // ✅ Upload stable sur Web/iOS/Android
       await Supabase.instance.client.storage
           .from('profiles')
-          .upload(storagePath, file);
+          .uploadBinary(
+            storagePath,
+            bytes,
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+              upsert: true, // ✅ remplace le fichier existant
+            ),
+          );
 
-      // Obtenir l'URL publique
+      // URL publique
       final publicUrl = Supabase.instance.client.storage
           .from('profiles')
           .getPublicUrl(storagePath);
 
-      // Mettre à jour le profil utilisateur
+      // Mettre à jour les metadata (avatar_url)
       await Supabase.instance.client.auth.updateUser(
-        UserAttributes(
-          data: {'avatar_url': publicUrl},
-        ),
+        UserAttributes(data: {'avatar_url': publicUrl}),
       );
 
       setState(() {
@@ -169,33 +192,33 @@ class _ProfilePageState extends State<ProfilePage> {
         _isUploadingPhoto = false;
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('Photo mise à jour ! ✨'),
-              ],
-            ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Photo mise à jour !'),
+            ],
           ),
-        );
-      }
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      );
     } catch (e) {
       setState(() => _isUploadingPhoto = false);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur upload: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur upload: ${e.toString()}'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
@@ -203,33 +226,45 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() => _isUploadingPhoto = true);
 
     try {
+      final storagePath = _avatarStoragePath();
+
+      // 1) Nettoyer metadata
       await Supabase.instance.client.auth.updateUser(
-        UserAttributes(
-          data: {'avatar_url': null},
-        ),
+        UserAttributes(data: {'avatar_url': null}),
       );
+
+      // 2) (Optionnel mais propre) supprimer le fichier Storage
+      if (storagePath != null) {
+        try {
+          await Supabase.instance.client.storage
+              .from('profiles')
+              .remove([storagePath]);
+        } catch (_) {
+          // On ne bloque pas l'utilisateur si remove échoue
+        }
+      }
 
       setState(() {
         _photoUrl = null;
         _isUploadingPhoto = false;
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Photo supprimée'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Photo supprimée'),
+          backgroundColor: AppColors.success,
+        ),
+      );
     } catch (e) {
       setState(() => _isUploadingPhoto = false);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: ${e.toString()}')),
-        );
-      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur: ${e.toString()}')),
+      );
     }
   }
 
@@ -243,7 +278,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('Modifier le mot de passe'),
+          title: const Text('Modifier le mot de passe'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -259,7 +294,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               TextField(
                 controller: confirmPasswordController,
                 obscureText: obscureConfirm,
@@ -277,20 +312,20 @@ class _ProfilePageState extends State<ProfilePage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Annuler'),
+              child: const Text('Annuler'),
             ),
             ElevatedButton(
               onPressed: () async {
                 if (newPasswordController.text != confirmPasswordController.text) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Les mots de passe ne correspondent pas')),
+                    const SnackBar(content: Text('Les mots de passe ne correspondent pas')),
                   );
                   return;
                 }
 
                 if (newPasswordController.text.length < 6) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Le mot de passe doit faire au moins 6 caractères')),
+                    const SnackBar(content: Text('Le mot de passe doit faire au moins 6 caractères')),
                   );
                   return;
                 }
@@ -299,26 +334,25 @@ class _ProfilePageState extends State<ProfilePage> {
                   await Supabase.instance.client.auth.updateUser(
                     UserAttributes(password: newPasswordController.text),
                   );
-                  
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Mot de passe modifié ! ✨'),
-                        backgroundColor: AppColors.success,
-                      ),
-                    );
-                  }
+
+                  if (!context.mounted) return;
+
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Mot de passe modifié !'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
                 } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Erreur: ${e.toString()}')),
-                    );
-                  }
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erreur: ${e.toString()}')),
+                  );
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-              child: Text('Modifier'),
+              child: const Text('Modifier'),
             ),
           ],
         ),
@@ -345,7 +379,7 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             children: [
               Padding(
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
                     IconButton(
@@ -365,15 +399,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
               ),
-
               Expanded(
                 child: _isLoading
                     ? Center(child: CircularProgressIndicator(color: AppColors.primary))
                     : SingleChildScrollView(
-                        padding: EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(24),
                         child: Column(
                           children: [
-                            // Avatar avec possibilité de changer
                             Stack(
                               children: [
                                 GestureDetector(
@@ -387,12 +419,14 @@ class _ProfilePageState extends State<ProfilePage> {
                                         BoxShadow(
                                           color: AppColors.primary.withOpacity(0.3),
                                           blurRadius: 20,
-                                          offset: Offset(0, 10),
+                                          offset: const Offset(0, 10),
                                         ),
                                       ],
                                     ),
                                     child: _isUploadingPhoto
-                                        ? CircularProgressIndicator(color: AppColors.primary)
+                                        ? Center(
+                                            child: CircularProgressIndicator(color: AppColors.primary),
+                                          )
                                         : _photoUrl != null
                                             ? ClipOval(
                                                 child: Image.network(
@@ -406,7 +440,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                                         gradient: AppColors.primaryGradient,
                                                         shape: BoxShape.circle,
                                                       ),
-                                                      child: Icon(Icons.person, size: 60, color: Colors.white),
+                                                      child: const Icon(Icons.person, size: 60, color: Colors.white),
                                                     );
                                                   },
                                                 ),
@@ -416,40 +450,33 @@ class _ProfilePageState extends State<ProfilePage> {
                                                   gradient: AppColors.primaryGradient,
                                                   shape: BoxShape.circle,
                                                 ),
-                                                child: Icon(Icons.person, size: 60, color: Colors.white),
+                                                child: const Icon(Icons.person, size: 60, color: Colors.white),
                                               ),
                                   ),
                                 ),
-                                
-                                // Bouton edit
                                 Positioned(
                                   bottom: 0,
                                   right: 0,
                                   child: GestureDetector(
                                     onTap: _showPhotoOptions,
                                     child: Container(
-                                      padding: EdgeInsets.all(8),
+                                      padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
                                         color: AppColors.primary,
                                         shape: BoxShape.circle,
                                         border: Border.all(color: Colors.white, width: 3),
                                       ),
-                                      child: Icon(
-                                        Icons.camera_alt,
-                                        size: 20,
-                                        color: Colors.white,
-                                      ),
+                                      child: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
                                     ),
                                   ),
                                 ),
                               ],
                             ),
-
-                            SizedBox(height: 32),
+                            const SizedBox(height: 32),
 
                             // Email
                             Container(
-                              padding: EdgeInsets.all(20),
+                              padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(16),
@@ -461,14 +488,14 @@ class _ProfilePageState extends State<ProfilePage> {
                               child: Row(
                                 children: [
                                   Container(
-                                    padding: EdgeInsets.all(12),
+                                    padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
                                       color: AppColors.primary.withOpacity(0.1),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(Icons.email_outlined, color: AppColors.primary),
                                   ),
-                                  SizedBox(width: 16),
+                                  const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -481,7 +508,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
-                                        SizedBox(height: 4),
+                                        const SizedBox(height: 4),
                                         Text(
                                           _userEmail ?? 'Non disponible',
                                           style: TextStyle(
@@ -497,12 +524,12 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
 
-                            SizedBox(height: 24),
+                            const SizedBox(height: 24),
 
                             // Statistiques
                             if (_profile != null) ...[
                               Container(
-                                padding: EdgeInsets.all(20),
+                                padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(16),
@@ -516,7 +543,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     Row(
                                       children: [
                                         Icon(Icons.bar_chart, color: AppColors.secondary),
-                                        SizedBox(width: 12),
+                                        const SizedBox(width: 12),
                                         Text(
                                           'Mes statistiques',
                                           style: TextStyle(
@@ -527,7 +554,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                         ),
                                       ],
                                     ),
-                                    SizedBox(height: 20),
+                                    const SizedBox(height: 20),
                                     Row(
                                       children: [
                                         Expanded(
@@ -538,7 +565,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                             color: AppColors.success,
                                           ),
                                         ),
-                                        SizedBox(width: 12),
+                                        const SizedBox(width: 12),
                                         Expanded(
                                           child: _StatCard(
                                             icon: Icons.local_fire_department,
@@ -552,22 +579,21 @@ class _ProfilePageState extends State<ProfilePage> {
                                   ],
                                 ),
                               ),
-
-                              SizedBox(height: 24),
+                              const SizedBox(height: 24),
                             ],
 
                             ListTile(
                               leading: Icon(Icons.emoji_events, color: AppColors.primary),
-                              title: Text('Mes Badges'),
-                              subtitle: Text('Consulte tes succès'),
-                              trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                              title: const Text('Mes Badges'),
+                              subtitle: const Text('Consulte tes succès'),
+                              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                               onTap: () => Navigator.pushNamed(context, '/badges'),
                             ),
 
                             // Section Thèmes (bientôt disponible)
                             Container(
-                              margin: EdgeInsets.symmetric(horizontal: 20),
-                              padding: EdgeInsets.all(20),
+                              margin: const EdgeInsets.symmetric(horizontal: 20),
+                              padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   begin: Alignment.topLeft,
@@ -598,7 +624,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       size: 24,
                                     ),
                                   ),
-                                  SizedBox(width: 16),
+                                  const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -611,7 +637,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                             color: AppColors.textDark,
                                           ),
                                         ),
-                                        SizedBox(height: 4),
+                                        const SizedBox(height: 4),
                                         Text(
                                           'Bientôt disponible ! 🎨',
                                           style: TextStyle(
@@ -623,7 +649,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ),
                                   ),
                                   Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: AppColors.warning.withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(12),
@@ -642,7 +668,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
 
-                            SizedBox(height: 24),
+                            const SizedBox(height: 24),
 
                             // Bouton Modifier mot de passe
                             SizedBox(
@@ -650,8 +676,8 @@ class _ProfilePageState extends State<ProfilePage> {
                               height: 56,
                               child: OutlinedButton.icon(
                                 onPressed: _showChangePasswordDialog,
-                                icon: Icon(Icons.lock_outline),
-                                label: Text('Modifier le mot de passe'),
+                                icon: const Icon(Icons.lock_outline),
+                                label: const Text('Modifier le mot de passe'),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: AppColors.primary,
                                   side: BorderSide(color: AppColors.primary, width: 2),
@@ -687,7 +713,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
@@ -695,7 +721,7 @@ class _StatCard extends StatelessWidget {
       child: Column(
         children: [
           Icon(icon, color: color, size: 32),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
@@ -704,7 +730,7 @@ class _StatCard extends StatelessWidget {
               color: color,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
