@@ -13,6 +13,10 @@ import 'pages/welcome_page.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'services/web_notification_service.dart';
 import 'pages/badges_page.dart';
+import 'services/dashboard_cache.dart'; 
+import 'services/supabase_service.dart';
+import 'models/user_profile.dart';
+import 'models/mood_log.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,17 +34,93 @@ void main() async {
 
  
   AudioPreloader.preloadAudio();
-
-  // Initialiser timezone (seulement si pas web)
+  
+    // Initialiser timezone (seulement si pas web)
   if (!kIsWeb) {
     tz.initializeTimeZones();
   }
 
   await AppColors.loadTheme();
+
+  _preloadDashboardData();
   
   runApp(MyApp());
 }
+// ✅ AJOUTER cette fonction
+void _preloadDashboardData() async {
+    try {
+      print('📊 Préchargement dashboard...');
+      
+      // Vérifier si user connecté
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) {
+        print('❌ Pas d\'utilisateur connecté, skip preload');
+        return;
+      }
+      
+      // Charger en parallèle
+      final results = await Future.wait([
+        SupabaseService.getProfile(),
+        SupabaseService.getMoodLogs(limit: 7),
+        SupabaseService.getContextInsights(),
+        _preloadExerciseStats(),
+      ]);
+      
+      // Sauvegarder dans le cache
+      DashboardCache.update(
+        newProfile: results[0] as UserProfile?,
+        newMoods: results[1] as List<MoodLog>,
+        newContexts: results[2] as Map<String, dynamic>?,
+        newStats: results[3] as Map<String, dynamic>?,
+      );
+      
+      print('✅ Dashboard préchargé !');
+    } catch (e) {
+      print('❌ Erreur préchargement dashboard: $e');
+      // Pas grave, le dashboard chargera normalement
+    }
+  }
 
+  // ✅ AJOUTER cette fonction aussi
+  Future<Map<String, dynamic>?> _preloadExerciseStats() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return null;
+
+      final oneWeekAgo = DateTime.now().subtract(Duration(days: 7));
+      
+      final response = await Supabase.instance.client
+          .from('tips_sessions')
+          .select('duration_actual_seconds, tips(category)')
+          .eq('user_id', userId)
+          .eq('completed', true)
+          .gte('completed_at', oneWeekAgo.toIso8601String());
+
+      int breathing = 0, movement = 0, mental = 0;
+      int totalSeconds = 0;
+      
+      for (var item in response as List) {
+        final category = item['tips']?['category'];
+        final duration = item['duration_actual_seconds'] ?? 0;
+        
+        if (category == 'respiration') breathing++;
+        if (category == 'mouvement') movement++;
+        if (category == 'mental') mental++;
+        
+        totalSeconds += duration as int;
+      }
+
+      return {
+        'breathing': breathing,
+        'movement': movement,
+        'mental': mental,
+        'total_minutes': (totalSeconds / 60).round(),
+      };
+    } catch (e) {
+      print('❌ Erreur preload exercise stats: $e');
+      return null;
+    }
+  }
 
 class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -226,6 +306,7 @@ class _MyAppState extends State<MyApp> {
       return AppStartDestination.auth;
     }
   }
+  
 }
 
 // ✅ ENUM POUR LES DESTINATIONS POSSIBLES

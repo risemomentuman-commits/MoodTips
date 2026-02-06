@@ -5,7 +5,8 @@ import '../models/user_profile.dart';
 import '../models/mood_log.dart';
 import '../widgets/exercise_stats_card.dart';
 import '../widgets/badges_summary_widget.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // ✅ Ajouter cette ligne
+import 'package:supabase_flutter/supabase_flutter.dart'; 
+import '../services/dashboard_cache.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -57,18 +58,43 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _loadAllData() async {
+    // ✅ D'abord, vérifier si on a des données en cache
+    if (DashboardCache.isValid) {
+      print('✅ Utilisation du cache dashboard');
+      setState(() {
+        _profile = DashboardCache.profile;
+        _recentMoods = DashboardCache.recentMoods ?? [];
+        _contextInsights = DashboardCache.contextInsights;
+        _exerciseStats = DashboardCache.exerciseStats;
+        _isLoading = false;
+      });
+      return;
+    }
+    
+    // ✅ Sinon, charger normalement
     setState(() => _isLoading = true);
-
-    final stopwatch = Stopwatch()..start(); // ✅ Mesurer le temps
+    
+    final stopwatch = Stopwatch()..start();
     
     try {
-      // ✅ CHARGER TOUT EN PARALLÈLE avec Future.wait
+      print('🔄 Début chargement dashboard...');
+      
       final results = await Future.wait([
         SupabaseService.getProfile(),
         SupabaseService.getMoodLogs(limit: int.parse(_period)),
         SupabaseService.getContextInsights(),
         _fetchExerciseStats(),
       ]);
+      
+      print('✅ Chargement terminé en ${stopwatch.elapsedMilliseconds}ms');
+      
+      // ✅ Mettre à jour le cache
+      DashboardCache.update(
+        newProfile: results[0] as UserProfile?,
+        newMoods: results[1] as List<MoodLog>,
+        newContexts: results[2] as Map<String, dynamic>?,
+        newStats: results[3] as Map<String, dynamic>?,
+      );
       
       setState(() {
         _profile = results[0] as UserProfile?;
@@ -77,7 +103,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _exerciseStats = results[3] as Map<String, dynamic>?;
       });
     } catch (e) {
-      print('Erreur chargement dashboard: $e');
+      print('❌ Erreur chargement dashboard: $e');
     } finally {
       setState(() => _isLoading = false);
     }
