@@ -544,7 +544,7 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
             child: Column(
               children: [
                 _buildHeader(categoryColor),
-                SizedBox(height: 40),
+                SizedBox(height: 20),
                 _buildStepsProgress(progress),
                 SizedBox(height: 20),
                 _buildBreathingCircle(categoryColor),
