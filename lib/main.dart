@@ -28,8 +28,10 @@ void main() async {
   );
   // Initialiser Firebase Web (seulement sur Web)
   if (kIsWeb) {
-   await WebNotificationService.initialize();
-   WebNotificationService.setupListeners();
+   // ✅ COMMENTER
+  // await WebNotificationService.initialize();
+  // WebNotificationService.setupListeners();
+   
   }
 
  

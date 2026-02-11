@@ -3,7 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_routes.dart';
-import '../widgets/push_notification_settings_widget.dart';
+// import '../widgets/push_notification_settings_widget.dart'; // ✅ Commenter
+import 'connections_settings_page.dart';
+import 'detection_test_page.dart';
 
 class SettingsPage extends StatelessWidget {
   Future<void> _handleLogout(BuildContext context) async {
@@ -127,6 +129,23 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ),
 
+                // ✅ TEMPORAIRE - Test détection
+                _buildSettingCard(
+                  context: context,
+                  icon: Icons.bug_report,
+                  iconColor: Colors.purple,
+                  title: '🧪 Test Détection',
+                  subtitle: 'Debug Mode Intelligent',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => DetectionTestPage()),
+                    );
+                  },
+                ),
+
+                SizedBox(height: 16),
+
                 // Section Tips
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 20),
@@ -230,7 +249,22 @@ class SettingsPage extends StatelessWidget {
 
                 
                 
-                PushNotificationSettingsWidget(),
+                // PushNotificationSettingsWidget(), // ✅ COMMENTER
+
+                // ✅ AJOUTER dans la liste des settings
+                _buildSettingCard(
+                  context: context,
+                  icon: Icons.psychology,
+                  iconColor: AppColors.primary,
+                  title: 'Mode Intelligent',
+                  subtitle: 'Gérer les connexions',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ConnectionsSettingsPage()),
+                    );
+                  },
+                ),
 
                                 
                 _buildSettingCard(

@@ -235,31 +235,33 @@ class SupabaseService {
       final userId = currentUserId;
       if (userId == null) return null;
 
+      // ✅ UNE SEULE requête avec tous les joins
       final contextsResponse = await _client
           .from('mood_contexts')
-          .select('*, mood_logs!inner(*)')
+          .select('''
+            *,
+            mood_logs!inner(
+              user_id,
+              emotion_id,
+              emotions!inner(
+                name,
+                type
+              )
+            )
+          ''')
           .eq('mood_logs.user_id', userId)
           .limit(50);
 
       print('📊 Contextes récupérés: ${contextsResponse.length}');
 
-      final List<Map<String, dynamic>> enrichedData = [];
-      
-      for (var context in contextsResponse) {
-        final moodLogId = context['mood_log_id'];
-        
-        final emotionResponse = await _client
-            .from('mood_logs')
-            .select('emotion_id, emotions!inner(name, type)')
-            .eq('id', moodLogId)
-            .single();
-        
-        enrichedData.add({
+      // ✅ Pas de boucle, tout est déjà chargé !
+      final List<Map<String, dynamic>> enrichedData = contextsResponse.map((context) {
+        return {
           ...context,
-          'emotion_name': emotionResponse['emotions']['name'],
-          'emotion_type': emotionResponse['emotions']['type'],
-        });
-      }
+          'emotion_name': context['mood_logs']['emotions']['name'],
+          'emotion_type': context['mood_logs']['emotions']['type'],
+        };
+      }).toList();
 
       print('✅ Données enrichies: ${enrichedData.length}');
 

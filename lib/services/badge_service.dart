@@ -242,7 +242,7 @@ class BadgeService {
   static Future<int> _getCompletedExercises() async {
     final userId = supabase.auth.currentUser?.id;
     final response = await supabase
-      .from('exercise_sessions')
+      .from('tips_sessions')
       .select()
       .eq('user_id', userId!)
       .eq('completed', true);
@@ -263,7 +263,7 @@ class BadgeService {
   static Future<int> _getExploredCategories() async {
     final userId = supabase.auth.currentUser?.id;
     final response = await supabase
-      .from('exercise_sessions')
+      .from('tips_sessions')
       .select('tip_id')
       .eq('user_id', userId!)
       .eq('completed', true);

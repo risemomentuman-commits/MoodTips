@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/edge_tts_service.dart';
+// import '../services/edge_tts_service.dart'; // ✅ Commenter
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:async';
 import '../models/tip.dart';
@@ -8,6 +8,7 @@ import '../utils/app_colors.dart';
 import '../services/supabase_service.dart';
 import '../services/audio_preloader.dart';
 import '../utils/badge_checker.dart';
+
  
 
 class TipsPlayerPage extends StatefulWidget {
@@ -48,7 +49,7 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   @override
   void initState() {
     super.initState();
-    EdgeTtsService.initialize();  // ← AJOUTE CETTE LIGNE
+    // EdgeTtsService.initialize(); // ✅ COMMENTER
 
     print('🎬 initState appelé');
 
@@ -123,7 +124,8 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
     
     setState(() => _isSpeaking = true);
     try {
-      await EdgeTtsService.speak(textToSpeak);
+      // await EdgeTtsService.speak(textToSpeak); // ✅ COMMENTER
+      print('🔇 TTS désactivé temporairement'); // ✅ AJOUTER
     } catch (e) {
     print('Erreur: $e');
     }

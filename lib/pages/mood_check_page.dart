@@ -243,61 +243,123 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
 
                   SizedBox(height: 12),
 
-                  // Toggle Mode Express
+                 // Toggle Mode Intelligent / Standard
                   Container(
-                    margin: EdgeInsets.symmetric(horizontal: 20),
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
+                          blurRadius: 10,
                           offset: Offset(0, 2),
                         ),
                       ],
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              _isExpressMode ? Icons.flash_on : Icons.tune,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _isExpressMode ? 'Mode Express' : 'Mode Standard',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textDark,
+                        // MODE INTELLIGENT (EN PREMIER)
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() => _isExpressMode = true); // On réutilise la variable existante
+                              HapticFeedback.lightImpact();
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _isExpressMode 
+                                  ? AppColors.primary
+                                  : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.psychology,
+                                    color: _isExpressMode 
+                                      ? Colors.white 
+                                      : Colors.grey[600],
+                                    size: 22,
                                   ),
-                                ),
-                                Text(
-                                  _isExpressMode ? 'Check-in rapide (5 sec)' : 'Parcours complet',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.textMedium,
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Mode Intelligent',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: _isExpressMode 
+                                        ? Colors.white 
+                                        : Colors.grey[600],
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  Text(
+                                    'Détection auto',
+                                    style: TextStyle(
+                                      color: _isExpressMode 
+                                        ? Colors.white70 
+                                        : Colors.grey[500],
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
+                          ),
                         ),
-                        Switch(
-                          value: _isExpressMode,
-                          onChanged: (value) {
-                            setState(() => _isExpressMode = value);
-                            HapticFeedback.lightImpact();
-                          },
-                          activeColor: AppColors.primary,
+                        
+                        // MODE STANDARD
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() => _isExpressMode = false);
+                              HapticFeedback.lightImpact();
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: !_isExpressMode 
+                                  ? AppColors.primary
+                                  : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.tune,
+                                    color: !_isExpressMode 
+                                      ? Colors.white 
+                                      : Colors.grey[600],
+                                    size: 22,
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Mode Standard',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: !_isExpressMode 
+                                        ? Colors.white 
+                                        : Colors.grey[600],
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Parcours complet',
+                                    style: TextStyle(
+                                      color: !_isExpressMode 
+                                        ? Colors.white70 
+                                        : Colors.grey[500],
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -307,12 +369,13 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
 
                   Text(
                     _isExpressMode 
-                        ? 'Sélectionne ton émotion et c\'est tout !'
+                        ? 'Valide ou modifie la détection automatique'
                         : 'Fais tourner la roue et sélectionne',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.textMedium,
                     ),
+                    textAlign: TextAlign.center,
                   ),
 
                   SizedBox(height: 8),
@@ -381,6 +444,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                             );
                           }
                         },
+                        isIntelligentMode: _isExpressMode,
                       );
                     },
                   ),

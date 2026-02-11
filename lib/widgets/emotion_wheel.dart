@@ -3,15 +3,18 @@ import 'package:flutter/services.dart';
 import 'dart:math' as math;
 import '../models/emotion.dart';
 import '../utils/app_colors.dart';
+import '../pages/intelligent_mode_flow_page.dart';
 
 class EmotionWheel extends StatefulWidget {
   final List<Emotion> emotions;
   final Function(Emotion) onEmotionSelected;
+  final bool isIntelligentMode;
 
   const EmotionWheel({
     Key? key,
     required this.emotions,
     required this.onEmotionSelected,
+    this.isIntelligentMode = false, // ✅ AJOUTER (optionnel avec valeur par défaut)
   }) : super(key: key);
 
   @override
@@ -175,9 +178,18 @@ class _EmotionWheelState extends State<EmotionWheel>
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    HapticFeedback.heavyImpact();
-                    widget.onEmotionSelected(widget.emotions[_selectedIndex]);
+                    if (widget.isIntelligentMode) {
+                      // MODE INTELLIGENT
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => IntelligentModeFlowPage()),
+                      );
+                    } else {
+                      // MODE STANDARD
+                      widget.onEmotionSelected(widget.emotions[_selectedIndex]); // ✅ Passer l'objet Emotion complet
+                    }
                   },
+                  
                   borderRadius: BorderRadius.circular(20),
                   splashColor: Colors.white.withOpacity(0.3),
                   highlightColor: Colors.white.withOpacity(0.1),

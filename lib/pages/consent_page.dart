@@ -6,7 +6,8 @@ import '../utils/app_routes.dart';
 import '../services/notification_service.dart';
 import '../services/supabase_service.dart';
 import 'welcome_page.dart';
-import '../services/web_notification_service.dart';
+// import '../services/web_notification_service.dart'; 
+
 
 class ConsentPage extends StatefulWidget {
   const ConsentPage({Key? key}) : super(key: key);
@@ -85,11 +86,11 @@ class _ConsentPageState extends State<ConsentPage> {
                       value: _notificationsEnabled,
                       onChanged: (value) async {
                         if (value) {
-                          await WebNotificationService.setNotificationsEnabled(true);
-                          final enabled = await WebNotificationService.areNotificationsEnabled();
-                          setState(() => _notificationsEnabled = enabled);
+                          // await WebNotificationService.setNotificationsEnabled(true); // ✅ COMMENTER
+                          // final enabled = await WebNotificationService.areNotificationsEnabled(); // ✅ COMMENTER
+                          // setState(() => _notificationsEnabled = enabled); // ✅ COMMENTER AUSSI
                         } else {
-                          await WebNotificationService.setNotificationsEnabled(false);
+                          // await WebNotificationService.setNotificationsEnabled(false); // ✅ COMMENTER
                           setState(() => _notificationsEnabled = false);
                         }
                       },
