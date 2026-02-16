@@ -258,11 +258,16 @@ class _SleepPageState extends State<SleepPage> {
                         ),
                       ),
                       SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [15, 30, 45, 60].map((minutes) {
-                          return _buildTimerChip(minutes);
-                        }).toList(),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [15, 30, 45, 60].map((minutes) {
+                            return Padding(
+                              padding: EdgeInsets.only(right: 8),
+                              child: _buildTimerChip(minutes),
+                            );
+                          }).toList(),
+                        ),
                       ),
                     ],
                   ),

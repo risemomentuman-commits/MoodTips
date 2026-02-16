@@ -8,6 +8,8 @@ import '../utils/app_colors.dart';
 import '../services/supabase_service.dart';
 import '../services/audio_preloader.dart';
 import '../utils/badge_checker.dart';
+import '../services/google_tts_service.dart';
+import '../utils/app_routes.dart';
 
  
 
@@ -115,22 +117,11 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
   }
 
   Future<void> _speakCurrentStep() async {
-    print('🎙️ _speakCurrentStep APPELÉ');
-
     final step = _steps[_currentStepIndex];
-    String textToSpeak = "${step.title}. ${step.description}";
-
-    print('🎙️ Texte: $textToSpeak');
-    
+    final text = "${step.title}. ${step.description}";
     setState(() => _isSpeaking = true);
-    try {
-      // await EdgeTtsService.speak(textToSpeak); // ✅ COMMENTER
-      print('🔇 TTS désactivé temporairement'); // ✅ AJOUTER
-    } catch (e) {
-    print('Erreur: $e');
-    }
-    setState(() => _isSpeaking = false);  // ← Doit être là !
-    print('🗣️ Voix lancée: ${step.title}');
+    await GoogleTTSService.speak(text);
+    setState(() => _isSpeaking = false);
   }
 
   void _togglePlayPause() {
@@ -387,7 +378,10 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
                             ? null
                             : () async {
                                 await _saveFeedback(selectedFeeling!);
-                                Navigator.of(context).pop();
+                                Navigator.of(context).pushNamedAndRemoveUntil(
+                                  AppRoutes.moodCheck, 
+                                  (route) => route.isFirst,
+                                );
                               },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
@@ -546,17 +540,17 @@ class _TipsPlayerPageState extends State<TipsPlayerPage> with TickerProviderStat
             child: Column(
               children: [
                 _buildHeader(categoryColor),
-                SizedBox(height: 20),
+                SizedBox(height: 10),
                 _buildStepsProgress(progress),
-                SizedBox(height: 20),
+                SizedBox(height: 10),
                 _buildBreathingCircle(categoryColor),
-                SizedBox(height: 40),
+                SizedBox(height: 30),
                 _buildInstructionCard(currentStep, categoryColor),
-                SizedBox(height: 40),  // ✅ Remplacer Spacer()
+                SizedBox(height: 30),  // ✅ Remplacer Spacer()
                 _buildTimer(),
-                SizedBox(height: 24),
+                SizedBox(height: 20),
                 _buildControls(categoryColor),
-                SizedBox(height: 80),  // ✅ Espace en bas
+                SizedBox(height: 20),  // ✅ Espace en bas
               ],
             ),
           ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
-import '../services/apple_health_service.dart';
+import '../services/health_service.dart';
 import '../services/calendar_service.dart';
 import '../utils/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -69,7 +69,7 @@ class _ConnectionsSettingsPageState extends State<ConnectionsSettingsPage> {
             if (kIsWeb) {
               message = 'Apple Health non disponible sur web';
             } else {
-              success = await AppleHealthService.requestAuthorization();
+              success = await HealthService.requestAuthorization();
               message = success 
                   ? '✅ Apple Health connecté' 
                   : '❌ Permission refusée';

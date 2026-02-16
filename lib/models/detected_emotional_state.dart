@@ -15,7 +15,7 @@ class DetectedEmotionalState {
     required this.detectedAt,
   });
 
-  bool get hasDetection => primaryEmotion != null && confidence > 0.5;
+  bool get hasDetection => primaryEmotion != null && confidence > 0.3;
 }
 
 class EmotionPrediction {

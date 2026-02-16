@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
+import '../services/irm_service.dart';
 import '../utils/app_colors.dart';
 import '../models/user_profile.dart';
 import '../models/mood_log.dart';
 import '../widgets/exercise_stats_card.dart';
 import '../widgets/badges_summary_widget.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; 
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/dashboard_cache.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -18,6 +19,8 @@ class _DashboardPageState extends State<DashboardPage> {
   List<MoodLog> _recentMoods = [];
   Map<String, dynamic>? _contextInsights;
   Map<String, dynamic>? _exerciseStats;
+  IRMResult? _irmResult;
+  List<Map<String, dynamic>> _irmHistory = [];
   bool _isLoading = true;
   String _period = '7';
 
@@ -27,40 +30,8 @@ class _DashboardPageState extends State<DashboardPage> {
     _loadAllData();
   }
 
-  Future<void> _loadExerciseStats() async {
-    try {
-      final userId = SupabaseService.currentUserId;
-      if (userId == null) return;
-
-      // Exemple : compter les tips complétés par catégorie cette semaine
-      final oneWeekAgo = DateTime.now().subtract(Duration(days: 7));
-      
-      final response = await Supabase.instance.client
-          .from('user_tips')
-          .select('tip_id')
-          .eq('user_id', userId)
-          .eq('status', 'completed')
-          .gte('completed_at', oneWeekAgo.toIso8601String());
-
-      // Tu peux ensuite compter par catégorie
-      // Ceci est un exemple simplifié
-      setState(() {
-        _exerciseStats = {
-          'breathing': 5,
-          'movement': 3,
-          'mental': 2,
-          'total_minutes': 45,
-        };
-      });
-    } catch (e) {
-      print('Erreur chargement stats exercices: $e');
-    }
-  }
-
   Future<void> _loadAllData() async {
-    // ✅ D'abord, vérifier si on a des données en cache
     if (DashboardCache.isValid) {
-      print('✅ Utilisation du cache dashboard');
       setState(() {
         _profile = DashboardCache.profile;
         _recentMoods = DashboardCache.recentMoods ?? [];
@@ -68,44 +39,107 @@ class _DashboardPageState extends State<DashboardPage> {
         _exerciseStats = DashboardCache.exerciseStats;
         _isLoading = false;
       });
+      _loadIRM();
       return;
     }
-    
-    // ✅ Sinon, charger normalement
+
     setState(() => _isLoading = true);
-    
-    final stopwatch = Stopwatch()..start();
-    
+
     try {
-      print('🔄 Début chargement dashboard...');
-      
       final results = await Future.wait([
         SupabaseService.getProfile(),
         SupabaseService.getMoodLogs(limit: int.parse(_period)),
         SupabaseService.getContextInsights(),
         _fetchExerciseStats(),
       ]);
-      
-      print('✅ Chargement terminé en ${stopwatch.elapsedMilliseconds}ms');
-      
-      // ✅ Mettre à jour le cache
+
       DashboardCache.update(
         newProfile: results[0] as UserProfile?,
         newMoods: results[1] as List<MoodLog>,
         newContexts: results[2] as Map<String, dynamic>?,
         newStats: results[3] as Map<String, dynamic>?,
       );
-      
+
       setState(() {
         _profile = results[0] as UserProfile?;
         _recentMoods = results[1] as List<MoodLog>;
         _contextInsights = results[2] as Map<String, dynamic>?;
         _exerciseStats = results[3] as Map<String, dynamic>?;
       });
+
+      await _loadIRM();
     } catch (e) {
-      print('❌ Erreur chargement dashboard: $e');
+      print('❌ Erreur dashboard: $e');
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadIRM() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      // ✅ Lire le dernier score depuis Supabase au lieu de recalculer
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      final response = await Supabase.instance.client
+          .from('irm_scores')
+          .select('score, zone, date')
+          .eq('user_id', userId)
+          .eq('date', today)
+          .maybeSingle();
+
+      final history = await _fetchIRMHistory();
+
+      if (response != null) {
+        final zone = IRMZone.values.firstWhere(
+          (z) => z.name == response['zone'],
+          orElse: () => IRMZone.stable,
+        );
+        setState(() {
+          _irmResult = IRMResult(
+            score: response['score'] as int,
+            zone: zone,
+            factors: [],
+            recommendation: _getRecommendationForZone(zone),
+            protocol: _getProtocolForZone(zone),
+            notificationMessage: '',
+            sleepSource: SleepDataSource.unknown,
+            calculatedAt: DateTime.now(),
+          );
+          _irmHistory = history;
+        });
+      } else {
+        // Pas de score aujourd'hui → on calcule
+        final irm = await IRMService.calculateScore();
+        setState(() {
+          _irmResult = irm;
+          _irmHistory = history;
+        });
+      }
+    } catch (e) {
+      print('❌ Erreur IRM dashboard: $e');
+      // Fallback : calcul normal
+      try {
+        final irm = await IRMService.calculateScore();
+        setState(() => _irmResult = irm);
+      } catch (_) {}
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchIRMHistory() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return [];
+      final response = await Supabase.instance.client
+          .from('irm_scores')
+          .select('score, zone, date')
+          .eq('user_id', userId)
+          .gte('date', DateTime.now().subtract(Duration(days: 7)).toIso8601String().substring(0, 10))
+          .order('date', ascending: true);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      return [];
     }
   }
 
@@ -113,67 +147,32 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final userId = SupabaseService.currentUserId;
       if (userId == null) return null;
-
       final oneWeekAgo = DateTime.now().subtract(Duration(days: 7));
-      
-      // ✅ Récupérer les tips complétés avec leurs catégories
       final response = await Supabase.instance.client
-          .from('tips_sessions') // ✅ Bon nom de table
-          .select('duration_actual_seconds, tips(category)') // Joindre avec la table tips
+          .from('tips_sessions')
+          .select('duration_actual_seconds, tips(category)')
           .eq('user_id', userId)
-          .eq('completed', true) // ✅ completed est un boolean
+          .eq('completed', true)
           .gte('completed_at', oneWeekAgo.toIso8601String());
 
-      // Compter par catégorie
-      int breathing = 0, movement = 0, mental = 0, music = 0;
-      int totalSeconds = 0;
-      
+      int breathing = 0, movement = 0, mental = 0, totalSeconds = 0;
       for (var item in response as List) {
         final category = item['tips']?['category'];
         final duration = item['duration_actual_seconds'] ?? 0;
-        
-        // Compter par catégorie
         if (category == 'respiration') breathing++;
         if (category == 'mouvement') movement++;
         if (category == 'mental') mental++;
-        if (category == 'musique') music++;
-        
         totalSeconds += duration as int;
       }
-
       return {
         'breathing': breathing,
         'movement': movement,
         'mental': mental,
-        'total_minutes': (totalSeconds / 60).round(), // ✅ Convertir secondes en minutes
+        'total_minutes': (totalSeconds / 60).round(),
       };
     } catch (e) {
-      print('❌ Erreur stats exercices: $e');
       return null;
     }
-  }
-
-  
-  double get _averageMood {
-    if (_recentMoods.isEmpty) return 0;
-    final sum = _recentMoods.fold(0.0, (sum, log) => sum + log.emotionId);
-    return sum / _recentMoods.length;
-  }
-
-  String get _moodStatus {
-    final avg = _averageMood;
-    if (_recentMoods.isEmpty) return "Commence ton suivi";
-    if (avg >= 7) return "Tu te sens bien";
-    if (avg >= 4) return "Mitigé, à surveiller";
-    return "Priorité au bien-être";
-  }
-
-  IconData get _moodIcon {
-    final avg = _averageMood;
-    if (_recentMoods.isEmpty) return Icons.favorite_outline;
-    if (avg >= 7) return Icons.sentiment_very_satisfied;
-    if (avg >= 4) return Icons.sentiment_neutral;
-    return Icons.sentiment_dissatisfied;
   }
 
   @override
@@ -182,9 +181,9 @@ class _DashboardPageState extends State<DashboardPage> {
       backgroundColor: AppColors.backgroundPrimary,
       body: SafeArea(
         child: _isLoading
-          ? _buildSkeletonLoader() // ✅ Skeleton au lieu du spinner
-          : RefreshIndicator(
-                onRefresh: _loadAllData,  // ✅ _loadAllData au lieu de _loadData
+            ? _buildSkeletonLoader()
+            : RefreshIndicator(
+                onRefresh: _loadAllData,
                 color: AppColors.primary,
                 child: SingleChildScrollView(
                   physics: AlwaysScrollableScrollPhysics(),
@@ -192,6 +191,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Header
                       Row(
                         children: [
                           IconButton(
@@ -201,24 +201,50 @@ class _DashboardPageState extends State<DashboardPage> {
                           Expanded(
                             child: Text(
                               'Dashboard',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textDark,
-                              ),
+                              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textDark),
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 24),
-                      _buildHeroCard(),
                       SizedBox(height: 16),
+
+                      // 1. IRM HERO CARD
+                      _buildIRMHeroCard(),
+                      SizedBox(height: 12),
+
+                      // 2. TENDANCE 7 JOURS
+                      if (_irmHistory.isNotEmpty) ...[
+                        _buildIRMTrend(),
+                        SizedBox(height: 12),
+                      ],
+
+                      // 3. FACTEURS IRM
+                      if (_irmResult != null && _irmResult!.factors.isNotEmpty) ...[
+                        _buildIRMFactors(),
+                        SizedBox(height: 12),
+                      ],
+
+                      // 4. STREAK + BADGES
+                      Row(
+                        children: [
+                          Expanded(child: _buildStreakCard()),
+                          SizedBox(width: 12),
+                          Expanded(child: _buildMoodCard()),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+
+                      // 5. BADGES
                       BadgesSummaryWidget(),
-                      SizedBox(height: 16),
-                      if (_contextInsights != null && (_contextInsights!['total'] as int) > 0)
+                      SizedBox(height: 12),
+
+                      // 6. INSIGHT
+                      if (_contextInsights != null && (_contextInsights!['total'] as int) > 0) ...[
                         _buildKeyInsight(),
-                      if (_contextInsights != null && (_contextInsights!['total'] as int) > 0)
-                        SizedBox(height: 16),
+                        SizedBox(height: 12),
+                      ],
+
+                      // 7. EXERCICES
                       ExerciseStatsCard(
                         breathingCount: _exerciseStats?['breathing'] ?? 0,
                         movementCount: _exerciseStats?['movement'] ?? 0,
@@ -240,145 +266,366 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildSkeletonLoader() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header skeleton
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              SizedBox(width: 12),
-              Container(
-                width: 150,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ],
-          ),
-          
-          SizedBox(height: 24),
-          
-          // Hero card skeleton
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primary,
-                strokeWidth: 2,
-              ),
-            ),
-          ),
-          
-          SizedBox(height: 16),
-          
-          // Badges skeleton
-          Container(
-            height: 120,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(20),
-            ),
-          ),
-          
-          SizedBox(height: 16),
-          
-          // Exercise stats skeleton
-          Container(
-            height: 280,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(20),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // ── IRM HERO CARD ──
+  Widget _buildIRMHeroCard() {
+    if (_irmResult == null) {
+      return Container(
+        height: 120,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: Offset(0, 2))],
+        ),
+        child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
+      );
+    }
 
-  Widget _buildHeroCard() {
+    final irm = _irmResult!;
+    final zoneColor = irm.zone == IRMZone.stable
+        ? AppColors.primary
+        : irm.zone == IRMZone.pressure
+            ? AppColors.warning
+            : AppColors.error;
+
+
+    String trendText = '';
+    if (_irmHistory.length >= 2) {
+      final today = irm.score;
+      final yesterday = (_irmHistory[_irmHistory.length - 2]['score'] as int?) ?? today;
+      final diff = today - yesterday;
+      trendText = diff >= 0 ? '▲ +$diff pts vs hier' : '▼ $diff pts vs hier';
+    }
+
     return Container(
-      padding: EdgeInsets.all(24),
+      padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: AppColors.streakGradient,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: Offset(0, 2))],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(12),
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.25),
+                  color: zoneColor.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.local_fire_department, color: Colors.white, size: 28),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${irm.score}',
+                      style: TextStyle(color: zoneColor, fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '/100',
+                      style: TextStyle(color: zoneColor.withOpacity(0.7), fontSize: 10),
+                    ),
+                  ],
+                ),
               ),
               SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${_profile?.currentStreak ?? 0} jours',
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  Text(
-                    'de suite',
-                    style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.9)),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          SizedBox(height: 24),
-          Container(height: 1, color: Colors.white.withOpacity(0.3)),
-          SizedBox(height: 24),
-          Row(
-            children: [
-              Icon(_moodIcon, color: Colors.white, size: 32),
-              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _moodStatus,
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                      '${irm.zoneEmoji} ${irm.zoneLabel}',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: zoneColor),
                     ),
-                    if (_recentMoods.isNotEmpty)
-                      Text(
-                        '${_averageMood.toStringAsFixed(1)}/10 sur ${_period}j',
-                        style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.85)),
-                      ),
+                    Text(
+                      'IRM · Indice de Régulation Mentale',
+                      style: TextStyle(fontSize: 11, color: AppColors.textLight),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      irm.zoneDescription,
+                      style: TextStyle(fontSize: 12, color: AppColors.textMedium),
+                    ),
+                    if (trendText.isNotEmpty) ...[
+                      SizedBox(height: 4),
+                      Text(trendText, style: TextStyle(fontSize: 11, color: AppColors.textLight)),
+                    ],
                   ],
                 ),
               ),
             ],
+          ),
+          SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: irm.score / 100,
+              backgroundColor: Colors.grey[200],
+              valueColor: AlwaysStoppedAnimation<Color>(zoneColor),
+              minHeight: 6,
+            ),
+          ),
+          SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('🔴 0', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
+              Text('🟠 40', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
+              Text('🔵 70', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
+              Text('100', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
+            ],
+          ),
+          SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: zoneColor.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              irm.protocol,
+              style: TextStyle(fontSize: 12, color: AppColors.textMedium, height: 1.3),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
       ),
     );
   }
 
+  // ── TENDANCE 7 JOURS ──
+  Widget _buildIRMTrend() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('📊 IRM · Tendance 7 jours', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+          SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: _buildSparkline(),
+          ),
+          SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: _buildDayLabels(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildSparkline() {
+    final now = DateTime.now();
+    return List.generate(7, (i) {
+      final date = now.subtract(Duration(days: 6 - i));
+      final dateStr = date.toIso8601String().substring(0, 10);
+      final entry = _irmHistory.firstWhere(
+        (h) => h['date'] == dateStr,
+        orElse: () => {},
+      );
+      final score = entry.isNotEmpty ? (entry['score'] as int) : null;
+      final isToday = i == 6;
+
+      // Cas : pas de données
+      if (score == null) {
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 2),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                SizedBox(height: 13),
+                Container(
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // Variables déclarées AVANT utilisation
+      final barHeight = (score / 100 * 50).clamp(4.0, 50.0);
+      final color = score >= 70
+          ? AppColors.primary
+          : score >= 40
+              ? AppColors.warning
+              : AppColors.error;
+
+      return Expanded(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 2),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isToday)
+                Text(
+                  '$score',
+                  style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold),
+                )
+              else
+                SizedBox(height: 13),
+              Container(
+                height: barHeight,
+                decoration: BoxDecoration(
+                  color: isToday ? color : color.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  List<Widget> _buildDayLabels() {
+    final days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+    final now = DateTime.now();
+    return List.generate(7, (i) {
+      final date = now.subtract(Duration(days: 6 - i));
+      final dayIndex = date.weekday - 1;
+      final isToday = i == 6;
+      return Expanded(
+        child: Text(
+          days[dayIndex],
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 10,
+            color: isToday ? AppColors.primary : AppColors.textLight,
+            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      );
+    });
+  }
+
+  // ── FACTEURS IRM ──
+  Widget _buildIRMFactors() {
+    final factors = _irmResult!.factors.where((f) => f.impact < 0).take(3).toList();
+    if (factors.isEmpty) return SizedBox.shrink();
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('⚠️ Facteurs détectés aujourd\'hui', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+          SizedBox(height: 10),
+          ...factors.map((f) => Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Text(f.emoji, style: TextStyle(fontSize: 16)),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(f.label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+                      Text(f.description, style: TextStyle(fontSize: 11, color: AppColors.textMedium)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: f.impact < -10 
+                        ? AppColors.error.withOpacity(0.12)
+                        : AppColors.warning.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${f.impact > 0 ? '+' : ''}${f.impact} pts',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: f.impact < -10 ? AppColors.error : AppColors.warning,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
+  // ── STREAK CARD ──
+  Widget _buildStreakCard() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: AppColors.streakGradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.local_fire_department, color: Colors.white, size: 24),
+          SizedBox(height: 8),
+          Text(
+            '${_profile?.currentStreak ?? 0}',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          Text('jours de suite', style: TextStyle(fontSize: 11, color: Colors.white70)),
+        ],
+      ),
+    );
+  }
+
+  // ── MOOD CARD ──
+  Widget _buildMoodCard() {
+    final avg = _recentMoods.isEmpty
+        ? 0.0
+        : _recentMoods.fold(0.0, (s, l) => s + l.emotionId) / _recentMoods.length;
+
+    final color = avg >= 7 ? AppColors.success : avg >= 4 ? AppColors.warning : AppColors.error;
+    final emoji = avg >= 7 ? '😊' : avg >= 4 ? '😐' : '😔';
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(emoji, style: TextStyle(fontSize: 24)),
+          SizedBox(height: 8),
+          Text(
+            _recentMoods.isEmpty ? '-' : '${avg.toStringAsFixed(1)}/10',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color),
+          ),
+          Text('humeur moy. 7j', style: TextStyle(fontSize: 11, color: AppColors.textLight)),
+        ],
+      ),
+    );
+  }
+
+  // ── KEY INSIGHT ──
   Widget _buildKeyInsight() {
     final data = _contextInsights!['data'] as List;
     final Map<String, int> positiveLocations = {};
@@ -394,8 +641,9 @@ class _DashboardPageState extends State<DashboardPage> {
       }
     }
 
-    String? bestLocation = _getMostFrequent(positiveLocations);
-    String? worstLocation = _getMostFrequent(negativeLocations);
+    final bestLocation = _getMostFrequent(positiveLocations);
+    final worstLocation = _getMostFrequent(negativeLocations);
+    if (bestLocation == null && worstLocation == null) return SizedBox.shrink();
 
     final contextLabels = {
       'home': '🏠 la maison',
@@ -405,30 +653,21 @@ class _DashboardPageState extends State<DashboardPage> {
       'public': '🏬 lieux publics',
     };
 
-    if (bestLocation == null && worstLocation == null) return SizedBox.shrink();
-
-    final showPositive = bestLocation != null;
-    final location = showPositive ? bestLocation : worstLocation;
-    final isPositive = showPositive;
+    final isPositive = bestLocation != null;
+    final location = isPositive ? bestLocation : worstLocation;
 
     return Container(
-      padding: EdgeInsets.all(20),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.streakGradient.colors[0].withOpacity(0.15),
-            AppColors.streakGradient.colors[1].withOpacity(0.08),
-          ],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 1.5),
+        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: Offset(0, 2))],
       ),
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(12),
+            padding: EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: isPositive ? AppColors.success.withOpacity(0.15) : AppColors.error.withOpacity(0.15),
               shape: BoxShape.circle,
@@ -436,29 +675,22 @@ class _DashboardPageState extends State<DashboardPage> {
             child: Icon(
               isPositive ? Icons.lightbulb : Icons.warning_amber,
               color: isPositive ? AppColors.success : AppColors.error,
-              size: 24,
+              size: 20,
             ),
           ),
-          SizedBox(width: 16),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  isPositive ? '💡 Insight' : '⚠️ Attention',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textMedium,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                SizedBox(height: 4),
+                Text(isPositive ? '💡 Insight' : '⚠️ Attention',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textMedium)),
+                SizedBox(height: 2),
                 Text(
                   isPositive
                       ? 'Tu te sens mieux ${contextLabels[location] ?? location}'
                       : 'Moins bien ${contextLabels[location] ?? location}',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textDark),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark),
                 ),
               ],
             ),
@@ -468,9 +700,47 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // ── SKELETON ──
+  Widget _buildSkeletonLoader() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Container(height: 200, decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(20))),
+          SizedBox(height: 12),
+          Container(height: 90, decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(16))),
+          SizedBox(height: 12),
+          Container(height: 120, decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(16))),
+          SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: Container(height: 90, decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(16)))),
+            SizedBox(width: 12),
+            Expanded(child: Container(height: 90, decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(16)))),
+          ]),
+        ],
+      ),
+    );
+  }
+
   String? _getMostFrequent(Map<String, int> map) {
     if (map.isEmpty) return null;
     var entries = map.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     return entries.first.key;
+  }
+
+  String _getRecommendationForZone(IRMZone zone) {
+    switch (zone) {
+      case IRMZone.stable: return 'Continue comme ça 🌟';
+      case IRMZone.pressure: return 'Prends soin de toi aujourd\'hui';
+      case IRMZone.danger: return 'Pause et récupération recommandées';
+    }
+  }
+
+  String _getProtocolForZone(IRMZone zone) {
+    switch (zone) {
+      case IRMZone.stable: return 'Maintien';
+      case IRMZone.pressure: return 'Récupération légère';
+      case IRMZone.danger: return 'Récupération intensive';
+    }
   }
 }

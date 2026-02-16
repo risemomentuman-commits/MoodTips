@@ -6,6 +6,8 @@ import '../utils/app_colors.dart';
 import '../widgets/emotion_wheel.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/app_routes.dart';
+import '../services/emotion_analysis_service.dart';
+import '../widgets/emotion_alert_widget.dart';
 
 class IntelligentModeFlowPage extends StatefulWidget {
   const IntelligentModeFlowPage({Key? key}) : super(key: key);
@@ -19,13 +21,26 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
   bool _isLoading = true;
   bool _userValidated = false;
   String? _selectedEmotion;
+  bool _showAlert = false;
+  Future<Map<String, dynamic>>? _emotionAnalysisFuture;
   
   @override
   void initState() {
     super.initState();
     _runDetection();
+    _loadEmotionAnalysis(); // ✅ Ajoute cette ligne
   }
-  
+
+  Future<void> _loadEmotionAnalysis() async {
+    final shouldShow = await EmotionAnalysisService.shouldShowAlert();
+    if (shouldShow) {
+      setState(() {
+        _showAlert = true;
+        _emotionAnalysisFuture = EmotionAnalysisService.analyzeRecentEmotions();
+      });
+    }
+  }
+    
   Future<void> _runDetection() async {
     setState(() => _isLoading = true);
     
@@ -245,6 +260,24 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
                       ),
                     ),
                     SizedBox(width: 48),
+                    
+                    // ✅ Alerte émotionnelle Mode Intelligent
+                    if (_showAlert)
+                      FutureBuilder<Map<String, dynamic>>(
+                        future: _emotionAnalysisFuture,
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) return SizedBox.shrink();
+                          final analysis = snapshot.data!;
+                          if (!analysis['shouldShow']) return SizedBox.shrink();
+                          return EmotionAlertWidget(
+                            alertLevel: analysis['alertLevel'],
+                            message: analysis['message'],
+                            action: analysis['action'],
+                            consecutiveNegative: analysis['consecutiveNegative'],
+                            onDismiss: () => setState(() => _showAlert = false),
+                          );
+                        },
+                      ),
                   ],
                 ),
               ),

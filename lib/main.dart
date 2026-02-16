@@ -11,12 +11,14 @@ import 'services/notification_service.dart';
 import 'services/audio_preloader.dart';
 import 'pages/welcome_page.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'services/web_notification_service.dart';
 import 'pages/badges_page.dart';
 import 'services/dashboard_cache.dart'; 
 import 'services/supabase_service.dart';
 import 'models/user_profile.dart';
 import 'models/mood_log.dart';
+import 'services/google_tts_service.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,16 +39,22 @@ void main() async {
  
   AudioPreloader.preloadAudio();
   
-    // Initialiser timezone (seulement si pas web)
+  // ✅ Initialiser les notifications
   if (!kIsWeb) {
-    tz.initializeTimeZones();
+    await NotificationService.initialize();
+    await NotificationService.requestPermission();
+    await NotificationService.scheduleIRMNotifications();
+    NotificationService.checkAndSendContextualNotification(); 
   }
+
+  if (!kIsWeb) await GoogleTTSService.initialize();
 
   await AppColors.loadTheme();
 
   _preloadDashboardData();
   
-  runApp(MyApp());
+  NotificationService.navigatorKey = navigatorKey;
+  runApp(MyApp(navigatorKey: navigatorKey));
 }
 // ✅ AJOUTER cette fonction
 void _preloadDashboardData() async {
@@ -125,7 +133,8 @@ void _preloadDashboardData() async {
   }
 
 class MyApp extends StatefulWidget {
-  const MyApp({Key? key}) : super(key: key);
+  final GlobalKey<NavigatorState> navigatorKey;
+  const MyApp({required this.navigatorKey});
 
   // 🔑 Clé globale pour recharger l'app
   static final GlobalKey<_MyAppState> appKey = GlobalKey<_MyAppState>();
@@ -149,6 +158,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: widget.navigatorKey,
       title: 'MoodTips',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

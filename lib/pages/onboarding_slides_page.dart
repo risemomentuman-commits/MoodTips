@@ -18,25 +18,31 @@ class _OnboardingSlidesPageState extends State<OnboardingSlidesPage> {
       'icon': Icons.sentiment_satisfied_alt_rounded,
       'title': 'Chaque jour, dis-moi\ncomment tu te sens',
       'description': 'Un simple check-in quotidien pour prendre soin de toi',
-      'color': AppColors.emotions['heureux']!
+      'color': AppColors.primary,
+    },
+    {
+      'icon': Icons.psychology,
+      'title': 'Mode Intelligent\npour te comprendre',
+      'description': 'L\'IA analyse ton sommeil, ton activité et ton agenda pour détecter ton état émotionnel automatiquement',
+      'color': AppColors.secondary,
+    },
+    {
+      'icon': Icons.monitor_heart_outlined,
+      'title': 'Ton score IRM\nchaque matin',
+      'description': 'L\'Indice de Régulation Mentale mesure ton équilibre quotidien et t\'alerte avant l\'épuisement',
+      'color': AppColors.success,
     },
     {
       'icon': Icons.spa_outlined,
       'title': 'Reçois des tips\nadaptés à ton état',
-      'description': 'Respiration, mouvement et mindfulness personnalisés',
-      'color': AppColors.primary
-    },
-    {
-      'icon': Icons.trending_up_rounded,
-      'title': 'Suis ton évolution\nau fil du temps',
-      'description': 'Statistiques et insights sur ton bien-être',
-      'color': AppColors.success
+      'description': 'Respiration, mouvement et mindfulness personnalisés selon ton score IRM',
+      'color': AppColors.primary,
     },
     {
       'icon': Icons.celebration_outlined,
       'title': 'C\'est parti ! 🎉',
       'description': 'Configure ton expérience en quelques étapes',
-      'color': AppColors.secondary
+      'color': AppColors.secondary,
     },
   ];
 

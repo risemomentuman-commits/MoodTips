@@ -289,23 +289,22 @@ class BadgeService {
     final userId = supabase.auth.currentUser?.id;
     final response = await supabase
       .from('mood_logs')
-      .select('emotion_primary')
+      .select('emotion_id, emotions(name)')
       .eq('user_id', userId!)
       .order('created_at', ascending: false)
       .limit(10);
-    
+
     final positiveEmotions = ['joyeux', 'heureux', 'calme', 'confiant', 'énergique'];
     int consecutive = 0;
-    
+
     for (var log in response) {
-      final emotion = log['emotion_primary'] as String?;
+      final emotion = log['emotions']?['name'] as String?;
       if (emotion != null && positiveEmotions.contains(emotion.toLowerCase())) {
         consecutive++;
       } else {
         break;
       }
     }
-    
     return consecutive;
   }
   
