@@ -260,10 +260,11 @@ class _ConsentPageState extends State<ConsentPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
                   children: [
                     Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textDark)),
-                    SizedBox(width: 6),
                     if (isRequired)
                       _buildBadge('Requis', AppColors.primary),
                     if (badge != null && !isRequired)

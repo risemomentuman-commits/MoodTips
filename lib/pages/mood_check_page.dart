@@ -70,6 +70,10 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
   Future<void> _loadIRM() async {
     setState(() => _irmLoading = true);
     try {
+      if (_estimatedSleepHours == null) {
+        _estimatedSleepHours = await IRMService.loadManualSleepHours();
+        print('🛏️ Sommeil chargé depuis Supabase: $_estimatedSleepHours');
+      }
       final result = await IRMService.calculateScore(
         estimatedSleepHours: _estimatedSleepHours,
       );
@@ -651,10 +655,11 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
   Widget _buildSleepButton(String label, double hours) {
     final isSelected = _estimatedSleepHours == hours;
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         setState(() => _estimatedSleepHours = hours);
         HapticFeedback.lightImpact();
-        _loadIRM();
+        await IRMService.saveManualSleepHours(hours); // ✅ Sauvegarde pour la journée
+        _loadIRM(); // Recalcule l'IRM avec la nouvelle valeur
       },
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),

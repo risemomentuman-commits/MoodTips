@@ -466,4 +466,60 @@ class IRMService {
       print('❌ Erreur sauvegarde IRM: $e');
     }
   }
+  static Future<void> saveManualSleepHours(double hours) async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      // D'abord vérifier si une ligne existe pour aujourd'hui
+      final existing = await Supabase.instance.client
+          .from('irm_scores')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('date', today)
+          .maybeSingle();
+
+      if (existing != null) {
+        // Mettre à jour la ligne existante
+        await Supabase.instance.client
+            .from('irm_scores')
+            .update({'manual_sleep_hours': hours})
+            .eq('user_id', userId)
+            .eq('date', today);
+      } else {
+        // Créer une nouvelle ligne
+        await Supabase.instance.client
+            .from('irm_scores')
+            .insert({
+              'user_id': userId,
+              'date': today,
+              'manual_sleep_hours': hours,
+            });
+      }
+      print('✅ Sommeil manuel sauvegardé: ${hours}h');
+    } catch (e) {
+      print('❌ Erreur saveManualSleepHours: $e');
+    }
+  }
+
+  static Future<double?> loadManualSleepHours() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return null;
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      final response = await Supabase.instance.client
+          .from('irm_scores')
+          .select('manual_sleep_hours')
+          .eq('user_id', userId)
+          .eq('date', today)
+          .maybeSingle();
+      if (response?['manual_sleep_hours'] != null) {
+        return (response!['manual_sleep_hours'] as num).toDouble();
+      }
+      return null;
+    } catch (e) {
+      print('❌ Erreur loadManualSleepHours: $e');
+      return null;
+    }
+  }
 }
