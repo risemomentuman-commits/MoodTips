@@ -149,15 +149,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
 
-                _buildSettingCard(
-                  context: context,
-                  icon: Icons.slideshow,
-                  iconColor: Colors.purple,
-                  title: '🧪 Tester Onboarding',
-                  subtitle: 'Dev only',
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.onboardingSlides),
-                ),
-
                 // ── CONTENU ──
                 _buildSectionTitle('Contenu'),
                 _buildSettingCard(
