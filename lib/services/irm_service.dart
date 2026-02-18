@@ -106,6 +106,8 @@ class IRMService {
 
     // Récupération données
     final healthData = await HealthService.getAllHealthData();
+    print('🔍 IRM - healthData.sleep: ${healthData.sleep?.durationHours}h');
+    print('🔍 IRM - estimatedSleepHours manuel: $estimatedSleepHours');
     final calendarEvents = await CalendarService.getUpcomingEvents();
     final moodHistory = await _getRecentMoodHistory();
 

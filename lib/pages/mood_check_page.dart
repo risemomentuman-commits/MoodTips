@@ -637,11 +637,11 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildSleepButton('< 5h', 4.5),
-                      _buildSleepButton('5-6h', 5.5),
-                      _buildSleepButton('6-7h', 6.5),
-                      _buildSleepButton('7-8h', 7.5),
-                      _buildSleepButton('8h+', 8.5),
+                      _buildSleepButton('< 5h', 5.0),   // au lieu de 4.5
+                      _buildSleepButton('5-6h', 6.0),   // au lieu de 5.5
+                      _buildSleepButton('6-7h', 7.0),   // au lieu de 6.5
+                      _buildSleepButton('7-8h', 7.5),   // ok
+                      _buildSleepButton('8h+', 8.5),    // ok
                     ],
                   ),
                 ],

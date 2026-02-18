@@ -3,11 +3,23 @@ import 'package:health/health.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/health_context_data.dart';
 
+class SleepSession {
+  DateTime start;
+  DateTime end;
+  int totalMinutes;
+  
+  SleepSession({required this.start, required this.end, required this.totalMinutes});
+}
+
 class HealthService {
   static final Health _health = Health();
 
   static final List<HealthDataType> _types = [
+    HealthDataType.SLEEP_IN_BED,
     HealthDataType.SLEEP_ASLEEP,
+    HealthDataType.SLEEP_DEEP,
+    HealthDataType.SLEEP_LIGHT,
+    HealthDataType.SLEEP_REM,
     HealthDataType.STEPS,
     HealthDataType.ACTIVE_ENERGY_BURNED,
   ];
@@ -33,26 +45,41 @@ class HealthService {
     }
   }
 
-  /// Récupère données sommeil dernières 24h
+  //// Récupère données sommeil dernières 24h
   static Future<SleepData?> getTodaySleepData() async {
     DateTime now = DateTime.now();
-    DateTime yesterday = now.subtract(Duration(hours: 24));
+    DateTime yesterday = now.subtract(Duration(hours: 30));
+    
     try {
+      // ✅ Lire uniquement SLEEP_IN_BED (temps au lit total calculé par iOS)
       List<HealthDataPoint> sleepData = await _health.getHealthDataFromTypes(
-        types: [HealthDataType.SLEEP_ASLEEP],
+        types: [HealthDataType.SLEEP_IN_BED],
         startTime: yesterday,
         endTime: now,
       );
-      if (sleepData.isEmpty) return null;
-
-      double totalHours = 0;
-      for (var point in sleepData) {
-        Duration duration = point.dateTo.difference(point.dateFrom);
-        totalHours += duration.inMinutes / 60;
+      
+      if (sleepData.isEmpty) {
+        print('🛏️ Health: 0 points sommeil');
+        return null;
       }
+
+      // Trier par date et prendre la session la plus récente
+      sleepData.sort((a, b) => b.dateFrom.compareTo(a.dateFrom));
+      final mostRecent = sleepData.first;
+      
+      Duration duration = mostRecent.dateTo.difference(mostRecent.dateFrom);
+      double totalHours = duration.inMinutes / 60;
+      
+      // Appliquer un ratio de 0.85 pour estimer le sommeil effectif
+      // (temps au lit × 85% = sommeil effectif approximatif)
+      final effectiveHours = totalHours * 0.85;
+      final cappedHours = effectiveHours > 10 ? 10.0 : effectiveHours;
+      
+      print('🛏️ Health: temps au lit ${totalHours.toStringAsFixed(1)}h → sommeil effectif ~${cappedHours.toStringAsFixed(1)}h');
+      
       return SleepData(
-        durationHours: totalHours,
-        qualityScore: _calculateSleepQuality(totalHours),
+        durationHours: cappedHours,
+        qualityScore: _calculateSleepQuality(cappedHours),
       );
     } catch (e) {
       print('❌ Erreur récupération sommeil: $e');
