@@ -17,6 +17,9 @@ import 'services/supabase_service.dart';
 import 'models/user_profile.dart';
 import 'models/mood_log.dart';
 import 'services/google_tts_service.dart';
+import 'pages/forgot_password_page.dart';
+import 'pages/reset_password_page.dart';
+
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -42,9 +45,7 @@ void main() async {
   // ✅ Initialiser les notifications
   if (!kIsWeb) {
     await NotificationService.initialize();
-    await NotificationService.requestPermission();
-    await NotificationService.scheduleIRMNotifications();
-    NotificationService.checkAndSendContextualNotification(); 
+   
   }
 
   if (!kIsWeb) await GoogleTTSService.initialize();
@@ -149,6 +150,23 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    
+    // Écouter les événements d'authentification
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.passwordRecovery) {
+        // Navigation vers reset password
+        Future.delayed(const Duration(milliseconds: 300), () {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const ResetPasswordPage()),
+            (route) => false,
+          );
+        });
+      }
+    });
+  }
   // 🔄 Méthode pour forcer le rebuild
   void reload() {
     setState(() {
