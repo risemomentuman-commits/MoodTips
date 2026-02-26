@@ -6,6 +6,7 @@ import '../utils/app_routes.dart';
 import 'connections_settings_page.dart';
 import '../services/google_tts_service.dart';
 import 'notifications_Settings_page.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -50,30 +51,26 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  void _showAboutDialog(BuildContext context) {
+  void _showAboutDialog(BuildContext context, String version) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.favorite, color: AppColors.primary),
-            SizedBox(width: 8),
-            Text('MoodTips'),
-          ],
-        ),
+        title: const Text('MoodTips'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Version 1.0.0 Beta', style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
-            Text('Ton compagnon bien-être quotidien'),
-            SizedBox(height: 16),
-            Text('© 2026 Rise Momentum', style: TextStyle(fontSize: 12, color: AppColors.textMedium)),
+            Text('Version $version'),
+            const SizedBox(height: 8),
+            const Text('Votre compagnon de bien-être mental au quotidien.'),
+            // ... autres infos
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Fermer')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fermer'),
+          ),
         ],
       ),
     );
@@ -254,13 +251,19 @@ class _SettingsPageState extends State<SettingsPage> {
 
                 // ── AUTRE ──
                 _buildSectionTitle('Autre'),
-                _buildSettingCard(
-                  context: context,
-                  icon: Icons.info_outline,
-                  iconColor: AppColors.primary,
-                  title: 'À propos',
-                  subtitle: 'Version et informations',
-                  onTap: () => _showAboutDialog(context),
+                FutureBuilder<PackageInfo>(
+                  future: PackageInfo.fromPlatform(),
+                  builder: (context, snapshot) {
+                    final version = snapshot.hasData ? snapshot.data!.version : '...';
+                    return _buildSettingCard(
+                      context: context,
+                      icon: Icons.info_outline,
+                      iconColor: AppColors.primary,
+                      title: 'À propos',
+                      subtitle: 'Version $version',
+                      onTap: () => _showAboutDialog(context, version),
+                    );
+                  },
                 ),
                 _buildSettingCard(
                   context: context,
@@ -270,7 +273,19 @@ class _SettingsPageState extends State<SettingsPage> {
                   subtitle: 'Se déconnecter du compte',
                   onTap: () => _handleLogout(context),
                 ),
-
+                Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.pushNamed(context, AppRoutes.legalNotice),
+                    child: Text(
+                      'Mentions légales',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textLight,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
                 SizedBox(height: 32),
               ],
             ),

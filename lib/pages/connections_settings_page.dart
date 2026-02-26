@@ -5,6 +5,7 @@ import '../services/health_service.dart';
 import '../services/calendar_service.dart';
 import '../utils/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../widgets/irm_consent_toggle.dart';
 
 class ConnectionsSettingsPage extends StatefulWidget {
   const ConnectionsSettingsPage({Key? key}) : super(key: key);
@@ -238,8 +239,17 @@ class _ConnectionsSettingsPageState extends State<ConnectionsSettingsPage> {
                           ],
                         ),
                       ),
-                      
                       SizedBox(height: 32),
+
+                      // ── Consentement IRM v2 ──
+                      IrmConsentToggle(
+                        onConsentChanged: (isEnabled) {
+                          // Optionnel : recharger les connexions ou adapter l'UI
+                          _loadConnectionStatus();
+                        },
+                      ),
+                      SizedBox(height: 16),
+
                       
                       // Apple Health (si iOS)
                       if (!kIsWeb && Platform.isIOS) ...[

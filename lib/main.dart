@@ -19,6 +19,11 @@ import 'models/mood_log.dart';
 import 'services/google_tts_service.dart';
 import 'pages/forgot_password_page.dart';
 import 'pages/reset_password_page.dart';
+import '../services/consent_service.dart';
+import '../pages/consent_page.dart';
+import 'package:audio_service/audio_service.dart';
+import 'package:just_audio_background/just_audio_background.dart'; // ← ajoute en haut
+
 
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -33,9 +38,6 @@ void main() async {
   );
   // Initialiser Firebase Web (seulement sur Web)
   if (kIsWeb) {
-   // ✅ COMMENTER
-  // await WebNotificationService.initialize();
-  // WebNotificationService.setupListeners();
    
   }
 
@@ -49,6 +51,14 @@ void main() async {
   }
 
   if (!kIsWeb) await GoogleTTSService.initialize();
+  
+  if (!kIsWeb) {
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.moodtips.audio',
+      androidNotificationChannelName: 'MoodTips Audio',
+      androidNotificationOngoing: true,
+    );
+  }
 
   await AppColors.loadTheme();
 
@@ -175,133 +185,137 @@ class _MyAppState extends State<MyApp> {
   }
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: widget.navigatorKey,
-      title: 'MoodTips',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        scaffoldBackgroundColor: AppColors.backgroundPrimary,
-        fontFamily: 'SF Pro',
-        colorScheme: ColorScheme.light(
-          primary: AppColors.primary,
-          secondary: AppColors.secondary,
-        ),
-        appBarTheme: AppBarTheme(
-          elevation: 0,
-          backgroundColor: AppColors.backgroundPrimary,
-          iconTheme: IconThemeData(color: AppColors.textDark),
-          titleTextStyle: TextStyle(
-            color: AppColors.textDark,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+    return AudioServiceWidget(
+      child: MaterialApp(
+        navigatorKey: widget.navigatorKey,
+        title: 'MoodTips',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          scaffoldBackgroundColor: AppColors.backgroundPrimary,
+          fontFamily: 'SF Pro',
+          colorScheme: ColorScheme.light(
+            primary: AppColors.primary,
+            secondary: AppColors.secondary,
           ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
+          appBarTheme: AppBarTheme(
             elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+            backgroundColor: AppColors.backgroundPrimary,
+            iconTheme: IconThemeData(color: AppColors.textDark),
+            titleTextStyle: TextStyle(
+              color: AppColors.textDark,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
             ),
-            padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            ),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: AppColors.backgroundSecondary,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppColors.border, width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppColors.primary, width: 2),
+            ),
+            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           ),
         ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: AppColors.backgroundSecondary,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: AppColors.border, width: 1),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: AppColors.primary, width: 2),
-          ),
-          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        
+        // ✅ LOGIQUE DE ROUTING INTELLIGENTE
+        home: FutureBuilder<AppStartDestination>(
+          future: _determineStartDestination(),
+          builder: (context, snapshot) {
+            // Loading
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Scaffold(
+                backgroundColor: AppColors.backgroundPrimary,
+                body: Center(
+                  child: CircularProgressIndicator(
+                    color: AppColors.primary,
+                  ),
+                ),
+              );
+            }
+            
+            // Erreur
+            if (snapshot.hasError) {
+              print('Erreur routing: ${snapshot.error}');
+              return AuthPage();
+            }
+            
+            // Routing selon destination
+            final destination = snapshot.data ?? AppStartDestination.auth;
+            
+            switch (destination) {
+              case AppStartDestination.auth:
+                return AuthPage();
+              case AppStartDestination.onboarding:
+                return OnboardingSlidesPage();
+              case AppStartDestination.consent:          // ← NOUVEAU
+                return ConsentPage();   
+              case AppStartDestination.home:
+                return MoodCheckPage(key: MoodCheckPage.pageKey);
+            }
+          },
         ),
-      ),
-      
-      // ✅ LOGIQUE DE ROUTING INTELLIGENTE
-      home: FutureBuilder<AppStartDestination>(
-        future: _determineStartDestination(),
-        builder: (context, snapshot) {
-          // Loading
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Scaffold(
-              backgroundColor: AppColors.backgroundPrimary,
-              body: Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.primary,
+        
+        routes: {
+          ...AppRoutes.getRoutes(),
+          '/badges': (context) => BadgesPage(),
+          '/moodCheck': (context) => MoodCheckPage(key: ValueKey(AppColors.currentThemeId)), // ✅ Force rebuild
+        },
+        
+        // ✅ GESTION DES ROUTES DYNAMIQUES (redirections email, etc.)
+        onGenerateRoute: (settings) {
+          if (settings.name == '/auth/callback' || settings.name == '/email-confirmed') {
+            return MaterialPageRoute(
+              builder: (_) => Scaffold(
+                backgroundColor: AppColors.backgroundPrimary,
+                body: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle, size: 80, color: AppColors.primary),
+                        SizedBox(height: 24),
+                        Text(
+                          'Email confirmé ! ✅',
+                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Tu peux maintenant fermer cette page et te connecter.',
+                          style: TextStyle(fontSize: 16, color: AppColors.textMedium),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             );
           }
-          
-          // Erreur
-          if (snapshot.hasError) {
-            print('Erreur routing: ${snapshot.error}');
-            return AuthPage();
-          }
-          
-          // Routing selon destination
-          final destination = snapshot.data ?? AppStartDestination.auth;
-          
-          switch (destination) {
-            case AppStartDestination.auth:
-              return AuthPage();
-            case AppStartDestination.onboarding:
-              return OnboardingSlidesPage();
-            case AppStartDestination.home:
-              return MoodCheckPage(key: MoodCheckPage.pageKey);
-          }
+           return null;
         },
       ),
-      
-      routes: {
-        ...AppRoutes.getRoutes(),
-        '/badges': (context) => BadgesPage(),
-        '/moodCheck': (context) => MoodCheckPage(key: ValueKey(AppColors.currentThemeId)), // ✅ Force rebuild
-      },
-      
-      // ✅ GESTION DES ROUTES DYNAMIQUES (redirections email, etc.)
-      onGenerateRoute: (settings) {
-        if (settings.name == '/auth/callback' || settings.name == '/email-confirmed') {
-          return MaterialPageRoute(
-            builder: (_) => Scaffold(
-              backgroundColor: AppColors.backgroundPrimary,
-              body: Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.check_circle, size: 80, color: AppColors.primary),
-                      SizedBox(height: 24),
-                      Text(
-                        'Email confirmé ! ✅',
-                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textDark),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'Tu peux maintenant fermer cette page et te connecter.',
-                        style: TextStyle(fontSize: 16, color: AppColors.textMedium),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
-        return null;
-      },
     );
   }
 
@@ -328,7 +342,14 @@ class _MyAppState extends State<MyApp> {
         return AppStartDestination.onboarding;
       }
       
-      // 5. Tout est OK → Home
+      // 5. NOUVEAU : Vérifier si CGU acceptées (bonne version)
+      final consentService = ConsentService();
+      final hasCgu = await consentService.hasCguAccepted();
+      if (!hasCgu) {
+        return AppStartDestination.consent;
+      }
+      
+      // 6. Tout est OK → Home
       return AppStartDestination.home;
       
     } catch (e) {
@@ -343,5 +364,6 @@ class _MyAppState extends State<MyApp> {
 enum AppStartDestination {
   auth,        // Pas authentifié
   onboarding,  // Authentifié mais onboarding incomplet
+  consent,     
   home,        // Authentifié et onboarding complété
 }

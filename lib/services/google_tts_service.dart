@@ -6,6 +6,8 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:audio_service/audio_service.dart';
 
 enum TTSGender { female, male }
 
@@ -84,9 +86,18 @@ class GoogleTTSService {
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/tts_output.mp3');
       await file.writeAsBytes(bytes);
-
+      
       await _player!.stop();
-      await _player!.setFilePath(file.path);
+      await _player!.setAudioSource(
+        AudioSource.file(
+          file.path,
+          tag: MediaItem(
+            id: 'tts_${DateTime.now().millisecondsSinceEpoch}',
+            title: 'Exercice guidé',
+            artist: 'MoodTips',
+          ),
+        ),
+      );
       await _player!.play();
     } catch (e) {
       print('❌ Erreur lecture audio: $e');

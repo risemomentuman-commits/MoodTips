@@ -20,6 +20,7 @@ import '../pages/sleep_page.dart';
 import '../pages/intelligent_mode_flow_page.dart';
 import '../pages/notifications_Settings_page.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;  // ← DOIT être présent
+import '../pages/legal_notice_page.dart';
 
 class AppRoutes {
   static const String auth = '/auth';
@@ -44,6 +45,7 @@ class AppRoutes {
   static const String context = '/context';
   static const String sleep = '/sleep';
   static const String intelligentMode = '/intelligent-mode';
+  static const String legalNotice = '/legal-notice';
 
   static Map<String, WidgetBuilder> getRoutes() {
     return {
@@ -61,6 +63,7 @@ class AppRoutes {
       dashboard: (context) => DashboardPage(),
       tipsList: (context) => TipsListPage(),
       sleep: (context) => SleepPage(),
+      legalNotice: (context) => LegalNoticePage(),
       intelligentMode: (context) => IntelligentModeFlowPage(),
       context: (context) {
         final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;

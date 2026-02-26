@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_routes.dart';
+import '../services/consent_service.dart';
 import 'forgot_password_page.dart';
 
 class AuthPage extends StatefulWidget {
@@ -23,12 +24,12 @@ class _AuthPageState extends State<AuthPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final ConsentService _consentService = ConsentService();
 
   @override
   void initState() {
     super.initState();
     
-    // Afficher le message si présent (par exemple après validation email)
     if (widget.message != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -62,7 +63,6 @@ class _AuthPageState extends State<AuthPage> {
 
       if (!mounted) return;
 
-      // Vérifier si onboarding déjà complété
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId != null) {
         final profile = await Supabase.instance.client
@@ -76,10 +76,22 @@ class _AuthPageState extends State<AuthPage> {
         if (!mounted) return;
         
         if (onboardingCompleted) {
-          // Onboarding terminé -> aller à moodcheck
-          Navigator.pushReplacementNamed(context, AppRoutes.moodCheck);
+          // ══════════════════════════════════════════════════
+          // NOUVEAU : Vérifier si l'utilisateur a accepté
+          // la dernière version des CGU avant d'aller à moodcheck
+          // ══════════════════════════════════════════════════
+          final hasCgu = await _consentService.hasCguAccepted();
+          
+          if (!mounted) return;
+          
+          if (hasCgu) {
+            // CGU à jour → moodcheck
+            Navigator.pushReplacementNamed(context, AppRoutes.moodCheck);
+          } else {
+            // CGU obsolètes ou jamais acceptées → page consent
+            Navigator.pushReplacementNamed(context, AppRoutes.onboardingConsent);
+          }
         } else {
-          // Onboarding pas encore fait -> aller à onboarding
           Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
         }
       } else {
