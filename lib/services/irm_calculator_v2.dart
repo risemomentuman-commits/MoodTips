@@ -11,6 +11,7 @@ class IrmCalculatorV2 {
     required int workEvents,
     required int positiveEvents,
     double meetingHours = 0,
+    double weightedImpact = 0,  // ✅ NOUVEAU : impact pondéré
     required List<String> last7Emotions,
     required List<String> sources,
     String? triggeredBy,
@@ -21,9 +22,10 @@ class IrmCalculatorV2 {
     // 2. Activité (20 pts max)
     final activity = _calculateActivity(profile, steps, sources);
 
-    // 3. Charge mentale (30 pts max)
+    // 3. Charge mentale (30 pts max) — maintenant basé sur l'impact pondéré
     final mentalLoad = _calculateMentalLoad(
-      totalEvents, workEvents, positiveEvents, meetingHours, sources,
+      totalEvents, workEvents, positiveEvents,
+      meetingHours, weightedImpact, sources,
     );
 
     // 4. Stabilité émotionnelle (15 pts max)
@@ -164,12 +166,27 @@ class IrmCalculatorV2 {
   }
 
   // ─── CHARGE MENTALE (30 pts) ────────────────────────────
+  //
+  // Nouveau calcul basé sur l'impact pondéré :
+  // - weightedImpact = somme(impactWeight × durée) pour chaque événement
+  // - Sport/Recovery ont un impact négatif → réduisent la charge
+  // - Un CODIR de 2h pèse plus qu'un déjeuner de 2h
+  //
+  // Échelle d'impact pondéré :
+  //   0        → journée libre          → 30 pts
+  //   0.1-3    → charge légère          → 25 pts
+  //   3.1-6    → charge modérée         → 20 pts
+  //   6.1-10   → charge élevée          → 12 pts
+  //   10.1-15  → charge très élevée     → 8 pts
+  //   >15      → surcharge              → 5 pts
+  // ────────────────────────────────────────────────────────
 
   static IrmFactorBreakdown _calculateMentalLoad(
     int totalEvents,
     int workEvents,
     int positiveEvents,
     double meetingHours,
+    double weightedImpact,
     List<String> sources,
   ) {
     int points;
@@ -177,32 +194,52 @@ class IrmCalculatorV2 {
     String? impact;
     String? conseil;
 
+    // Construire la description contextuelle
+    String _desc() {
+      final parts = <String>[];
+      parts.add('$totalEvents événement${totalEvents > 1 ? 's' : ''} restant${totalEvents > 1 ? 's' : ''}');
+      if (meetingHours > 0) {
+        parts.add('${meetingHours.toStringAsFixed(1)}h de réunions');
+      }
+      if (positiveEvents > 0) {
+        parts.add('$positiveEvents régulateur${positiveEvents > 1 ? 's' : ''}');
+      }
+      return parts.join(' · ');
+    }
+
     if (totalEvents == 0) {
       points = 30;
-      explication = 'Aucun événement — journée libre';
+      explication = 'Plus d\'événements — journée libre';
       impact = 'positif';
-    } else if (meetingHours >= 6) {
-      points = 5;
-      explication = '${meetingHours.toStringAsFixed(1)}h de réunions — surcharge';
-      impact = 'négatif';
-      conseil = 'Bloque des pauses de 15min entre chaque créneau';
-    } else if (meetingHours >= 4 || workEvents >= 5) {
-      points = 12;
-      explication = '${meetingHours.toStringAsFixed(1)}h de réunions, $workEvents pro';
-      impact = 'négatif';
-      conseil = 'Journée dense — préserve ta pause déjeuner';
-    } else if (meetingHours >= 2 || totalEvents >= 4) {
-      points = 20;
-      explication = '${meetingHours.toStringAsFixed(1)}h de réunions, charge modérée';
-      impact = 'neutre';
-    } else if (totalEvents <= 3 && meetingHours < 2) {
+    } else if (weightedImpact <= 0) {
+      points = 30;
+      explication = 'Que des activités de récupération — excellent';
+      impact = 'positif';
+    } else if (weightedImpact <= 3) {
       points = 25;
-      explication = '$totalEvents événements (${meetingHours.toStringAsFixed(1)}h), charge légère';
+      explication = '${_desc()} — charge légère';
       impact = 'neutre';
-    } else {
+    } else if (weightedImpact <= 6) {
       points = 20;
-      explication = '$totalEvents événements';
+      explication = '${_desc()} — charge modérée';
       impact = 'neutre';
+    } else if (weightedImpact <= 10) {
+      points = 12;
+      explication = '${_desc()} — charge élevée';
+      impact = 'négatif';
+      conseil = positiveEvents > 0
+          ? 'Journée dense mais $positiveEvents activité(s) de récupération prévue(s)'
+          : 'Journée dense — préserve ta pause déjeuner';
+    } else if (weightedImpact <= 15) {
+      points = 8;
+      explication = '${_desc()} — charge très élevée';
+      impact = 'négatif';
+      conseil = 'Bloque des micro-pauses de 5min entre chaque créneau';
+    } else {
+      points = 5;
+      explication = '${_desc()} — surcharge';
+      impact = 'critique';
+      conseil = 'Journée critique : délègue si possible et priorise ta récupération ce soir';
     }
 
     return IrmFactorBreakdown(

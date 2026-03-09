@@ -40,6 +40,9 @@ class IrmDetailPage extends StatelessWidget {
             // Sources
             _buildSourcesSection(),
             const SizedBox(height: 24),
+            // Disclaimer
+            _buildDisclaimer(),
+            const SizedBox(height: 24),
             // Horodatage
             _buildTimestamp(),
             const SizedBox(height: 40),
@@ -239,5 +242,35 @@ class IrmDetailPage extends StatelessWidget {
       return 'Connecte ton calendrier pour évaluer ta charge mentale';
     }
     return 'Continue tes check-ins quotidiens pour affiner le score';
+  }
+  Widget _buildDisclaimer() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, color: Colors.white.withValues(alpha: 0.4), size: 16),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Cet indicateur est un outil de bien-être et de prévention primaire. Il ne constitue pas un diagnostic médical et ne remplace en aucun cas l\'avis d\'un professionnel de santé.',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 11,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

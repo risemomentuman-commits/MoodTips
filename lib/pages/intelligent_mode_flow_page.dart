@@ -152,14 +152,16 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
       int positiveEvents = 0;
       bool hasCalendar = false;
       double meetingHours = 0;
+      double weightedImpact = 0;
       try {
         final events = await CalendarService.getTodayEvents();
         totalEvents = events.length;
-        workEvents = events.where((e) => e.isStressful).length;
-        positiveEvents = events.where((e) => !e.isStressful).length;
+        workEvents = CalendarService.countWorkEvents(events);
+        positiveEvents = CalendarService.countPositiveEvents(events);
         hasCalendar = totalEvents > 0;
-        meetingHours = events.fold<double>(0, (sum, e) => sum + e.durationHours);
-        print('📅 $totalEvents événements, ${meetingHours.toStringAsFixed(1)}h de réunions');
+        meetingHours = CalendarService.calculateMeetingHours(events);
+        weightedImpact = CalendarService.calculateWeightedImpact(events);
+        print('📅 $totalEvents événements, impact pondéré: ${weightedImpact.toStringAsFixed(1)}');
       } catch (e) {
         print('⚠️ Calendrier non disponible: $e');
       }
@@ -180,6 +182,7 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
         meetingHours: meetingHours,
         last7Emotions: last7Emotions,
         sources: sources,
+        weightedImpact: weightedImpact,
        
         triggeredBy: 'checkin',
       );
