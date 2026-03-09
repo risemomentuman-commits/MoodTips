@@ -1,33 +1,100 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../services/supabase_service.dart';
-import '../services/irm_service.dart';
 import '../utils/app_colors.dart';
 import '../models/user_profile.dart';
 import '../models/mood_log.dart';
+import '../models/irm_score_detailed.dart';
 import '../widgets/exercise_stats_card.dart';
 import '../widgets/badges_summary_widget.dart';
+import '../widgets/battery_widget.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/dashboard_cache.dart';
+import '../services/irm_calculator_v2.dart';
+import '../services/user_learning_service.dart';
+import '../services/health_service.dart';
+import '../repositories/irm_scores_repository.dart';
+import '../repositories/user_profile_repository.dart';
+import '../pages/irm_detail_page.dart';
+import '../pages/irm_history_page.dart';
+import '../services/calendar_service.dart';
+import '../widgets/battery_widget.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
   _DashboardPageState createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage> {
+class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserver {
   UserProfile? _profile;
   List<MoodLog> _recentMoods = [];
   Map<String, dynamic>? _contextInsights;
   Map<String, dynamic>? _exerciseStats;
-  IRMResult? _irmResult;
-  List<Map<String, dynamic>> _irmHistory = [];
   bool _isLoading = true;
-  String _period = '7';
+
+  IrmScoreDetailed? _irmScore;
+  bool _irmLoading = true;
+  List<Map<String, dynamic>> _irmHistory = [];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadAllData();
+    _loadIrmScore();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadIrmScore();
+    }
+  }
+
+  // ══════════════════════════════════════
+  // CHARGEMENT DES DONNÉES
+  // ══════════════════════════════════════
+
+  Future<void> _loadIrmScore() async {
+    setState(() => _irmLoading = true);
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      print('🔍 Dashboard IRM - userId: $userId');
+      if (userId == null) return;
+
+      final scoresRepo = IrmScoresRepository();
+      final existing = await scoresRepo.getLatestScore(userId);
+      print('🔍 Dashboard IRM - score trouvé: ${existing?.score}');
+
+      setState(() {
+        _irmScore = existing;
+        _irmLoading = false;
+      });
+    } catch (e) {
+      print('❌ Erreur IRM dashboard: $e');
+      setState(() => _irmLoading = false);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchIrmHistory(String userId) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('irm_scores_timeline')
+          .select('score, date, timestamp')
+          .eq('user_id', userId)
+          .gte('date', DateTime.now().subtract(Duration(days: 7)).toIso8601String().substring(0, 10))
+          .order('timestamp', ascending: true);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('❌ Erreur historique IRM: $e');
+      return [];
+    }
   }
 
   Future<void> _loadAllData() async {
@@ -39,7 +106,6 @@ class _DashboardPageState extends State<DashboardPage> {
         _exerciseStats = DashboardCache.exerciseStats;
         _isLoading = false;
       });
-      _loadIRM();
       return;
     }
 
@@ -48,7 +114,7 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final results = await Future.wait([
         SupabaseService.getProfile(),
-        SupabaseService.getMoodLogs(limit: int.parse(_period)),
+        SupabaseService.getMoodLogs(limit: 7),
         SupabaseService.getContextInsights(),
         _fetchExerciseStats(),
       ]);
@@ -66,80 +132,10 @@ class _DashboardPageState extends State<DashboardPage> {
         _contextInsights = results[2] as Map<String, dynamic>?;
         _exerciseStats = results[3] as Map<String, dynamic>?;
       });
-
-      await _loadIRM();
     } catch (e) {
       print('❌ Erreur dashboard: $e');
     } finally {
       setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _loadIRM() async {
-    try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
-
-      // ✅ Lire le dernier score depuis Supabase au lieu de recalculer
-      final today = DateTime.now().toIso8601String().substring(0, 10);
-      final response = await Supabase.instance.client
-          .from('irm_scores')
-          .select('score, zone, date')
-          .eq('user_id', userId)
-          .eq('date', today)
-          .maybeSingle();
-
-      final history = await _fetchIRMHistory();
-
-      if (response != null) {
-        final zone = IRMZone.values.firstWhere(
-          (z) => z.name == response['zone'],
-          orElse: () => IRMZone.stable,
-        );
-        setState(() {
-          _irmResult = IRMResult(
-            score: response['score'] as int,
-            zone: zone,
-            factors: [],
-            recommendation: _getRecommendationForZone(zone),
-            protocol: _getProtocolForZone(zone),
-            notificationMessage: '',
-            sleepSource: SleepDataSource.unknown,
-            calculatedAt: DateTime.now(),
-          );
-          _irmHistory = history;
-        });
-      } else {
-        // Pas de score aujourd'hui → on calcule
-        final irm = await IRMService.calculateScore();
-        setState(() {
-          _irmResult = irm;
-          _irmHistory = history;
-        });
-      }
-    } catch (e) {
-      print('❌ Erreur IRM dashboard: $e');
-      // Fallback : calcul normal
-      try {
-        final irm = await IRMService.calculateScore();
-        setState(() => _irmResult = irm);
-      } catch (_) {}
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchIRMHistory() async {
-    try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return [];
-      final response = await Supabase.instance.client
-          .from('irm_scores')
-          .select('score, zone, date')
-          .eq('user_id', userId)
-          .gte('date', DateTime.now().subtract(Duration(days: 7)).toIso8601String().substring(0, 10))
-          .order('date', ascending: true);
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      return [];
     }
   }
 
@@ -175,6 +171,10 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  // ══════════════════════════════════════
+  // BUILD PRINCIPAL
+  // ══════════════════════════════════════
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -183,75 +183,66 @@ class _DashboardPageState extends State<DashboardPage> {
         child: _isLoading
             ? _buildSkeletonLoader()
             : RefreshIndicator(
-                onRefresh: _loadAllData,
+                onRefresh: () async {
+                  await Future.wait([_loadAllData(), _loadIrmScore()]);
+                },
                 color: AppColors.primary,
                 child: SingleChildScrollView(
                   physics: AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Header
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.arrow_back_ios, color: AppColors.textDark),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                          Expanded(
-                            child: Text(
-                              'Dashboard',
-                              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textDark),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16),
+                      _buildHeader(),
 
-                      // 1. IRM HERO CARD
-                      _buildIRMHeroCard(),
-                      SizedBox(height: 12),
+                      // Score IRM principal
+                      _buildIrmCard(),
 
-                      // 2. TENDANCE 7 JOURS
-                      if (_irmHistory.isNotEmpty) ...[
-                        _buildIRMTrend(),
-                        SizedBox(height: 12),
-                      ],
+                      // Courbe 7 jours
+                      if (_irmHistory.length >= 2) _buildTrendChart(),
 
-                      // 3. FACTEURS IRM
-                      if (_irmResult != null && _irmResult!.factors.isNotEmpty) ...[
-                        _buildIRMFactors(),
-                        SizedBox(height: 12),
-                      ],
+                      // 4 facteurs rapides
+                      if (_irmScore != null) _buildFactorsRow(),
 
-                      // 4. STREAK + BADGES
-                      Row(
-                        children: [
-                          Expanded(child: _buildStreakCard()),
-                          SizedBox(width: 12),
-                          Expanded(child: _buildMoodCard()),
-                        ],
+                      // Streak + Humeur
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            Expanded(child: _buildStreakCard()),
+                            SizedBox(width: 12),
+                            Expanded(child: _buildMoodCard()),
+                          ],
+                        ),
                       ),
                       SizedBox(height: 12),
 
-                      // 5. BADGES
-                      BadgesSummaryWidget(),
+                      // Badges
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        child: BadgesSummaryWidget(),
+                      ),
                       SizedBox(height: 12),
 
-                      // 6. INSIGHT
-                      if (_contextInsights != null && (_contextInsights!['total'] as int) > 0) ...[
-                        _buildKeyInsight(),
-                        SizedBox(height: 12),
-                      ],
+                      // Insight
+                      if (_contextInsights != null && (_contextInsights!['total'] as int) > 0)
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20),
+                          child: _buildKeyInsight(),
+                        ),
+                      SizedBox(height: 12),
 
-                      // 7. EXERCICES
-                      ExerciseStatsCard(
-                        breathingCount: _exerciseStats?['breathing'] ?? 0,
-                        movementCount: _exerciseStats?['movement'] ?? 0,
-                        mentalCount: _exerciseStats?['mental'] ?? 0,
-                        totalMinutes: _exerciseStats?['total_minutes'] ?? 0,
+                      // Exercices
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        child: ExerciseStatsCard(
+                          breathingCount: _exerciseStats?['breathing'] ?? 0,
+                          movementCount: _exerciseStats?['movement'] ?? 0,
+                          mentalCount: _exerciseStats?['mental'] ?? 0,
+                          totalMinutes: _exerciseStats?['total_minutes'] ?? 0,
+                        ),
                       ),
-                      SizedBox(height: 80),
+                      SizedBox(height: 100),
                     ],
                   ),
                 ),
@@ -266,311 +257,403 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ── IRM HERO CARD ──
-  Widget _buildIRMHeroCard() {
-    if (_irmResult == null) {
-      return Container(
-        height: 120,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: Offset(0, 2))],
+  // ══════════════════════════════════════
+  // HEADER
+  // ══════════════════════════════════════
+
+  Widget _buildHeader() {
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? 'Bonjour ☀️' : hour < 18 ? 'Bon après-midi 👋' : 'Bonsoir 🌙';
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 12, 20, 8),
+      child: Row(
+        children: [
+          IconButton(
+            icon: Icon(Icons.arrow_back_ios, color: AppColors.textDark, size: 20),
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              }
+            },
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  greeting,
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                ),
+                Text(
+                  'Ton tableau de bord',
+                  style: TextStyle(fontSize: 13, color: AppColors.textMedium),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════
+  // CARTE IRM PRINCIPALE
+  // ══════════════════════════════════════
+
+  Widget _buildIrmCard() {
+    if (_irmLoading) {
+      return Padding(
+        padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: Offset(0, 2))],
+          ),
+          child: Row(
+            children: [
+              SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+              SizedBox(width: 10),
+              Text('Chargement IRM...', style: TextStyle(fontSize: 12, color: AppColors.textMedium)),
+            ],
+          ),
         ),
-        child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
       );
     }
 
-    final irm = _irmResult!;
-    final zoneColor = irm.zone == IRMZone.stable
-        ? AppColors.primary
-        : irm.zone == IRMZone.pressure
-            ? AppColors.warning
-            : AppColors.error;
-
-
-    String trendText = '';
-    if (_irmHistory.length >= 2) {
-      final today = irm.score;
-      final yesterday = (_irmHistory[_irmHistory.length - 2]['score'] as int?) ?? today;
-      final diff = today - yesterday;
-      trendText = diff >= 0 ? '▲ +$diff pts vs hier' : '▼ $diff pts vs hier';
+    if (_irmScore == null) {
+      return Padding(
+        padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+        child: GestureDetector(
+          onTap: () async {
+            await Navigator.pushNamed(context, '/mood-check');
+            _loadIrmScore();
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: Offset(0, 2))],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(color: Colors.grey.shade300, shape: BoxShape.circle),
+                  child: Center(child: Text('--', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold))),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('⚡ Énergie Mentale', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+                      Text('Fais ton premier check-in →', style: TextStyle(fontSize: 11, color: AppColors.primary)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: AppColors.textLight, size: 20),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: Offset(0, 2))],
-      ),
-      child: Column(
-        children: [
-          Row(
+    final score = _irmScore!.score;
+    final color = _getScoreColor(score);
+    final label = score >= 80 ? 'Excellent' : score >= 60 ? 'Bon' : score >= 40 ? 'Moyen' : 'Faible';
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+      child: GestureDetector(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => IrmDetailPage(score: _irmScore!))),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: Offset(0, 2))],
+          ),
+          child: Row(
             children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: zoneColor.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '${irm.score}',
-                      style: TextStyle(color: zoneColor, fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      '/100',
-                      style: TextStyle(color: zoneColor.withOpacity(0.7), fontSize: 10),
-                    ),
-                  ],
-                ),
+              BatteryWidget(
+                percentage: score,
+                width: 50,
+                height: 28,
               ),
-              SizedBox(width: 16),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${irm.zoneEmoji} ${irm.zoneLabel}',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: zoneColor),
+                      '⚡ Énergie Mentale · $label',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textDark),
                     ),
                     Text(
-                      'IRM · Indice de Régulation Mentale',
-                      style: TextStyle(fontSize: 11, color: AppColors.textLight),
+                      '$score/100 · IRM',
+                      style: TextStyle(fontSize: 11, color: AppColors.textMedium),
                     ),
-                    SizedBox(height: 4),
-                    Text(
-                      irm.zoneDescription,
-                      style: TextStyle(fontSize: 12, color: AppColors.textMedium),
-                    ),
-                    if (trendText.isNotEmpty) ...[
-                      SizedBox(height: 4),
-                      Text(trendText, style: TextStyle(fontSize: 11, color: AppColors.textLight)),
-                    ],
                   ],
                 ),
               ),
-            ],
-          ),
-          SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: irm.score / 100,
-              backgroundColor: Colors.grey[200],
-              valueColor: AlwaysStoppedAnimation<Color>(zoneColor),
-              minHeight: 6,
-            ),
-          ),
-          SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('🔴 0', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
-              Text('🟠 40', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
-              Text('🔵 70', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
-              Text('100', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
-            ],
-          ),
-          SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: zoneColor.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              irm.protocol,
-              style: TextStyle(fontSize: 12, color: AppColors.textMedium, height: 1.3),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── TENDANCE 7 JOURS ──
-  Widget _buildIRMTrend() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: Offset(0, 2))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('📊 IRM · Tendance 7 jours', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textDark)),
-          SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: _buildSparkline(),
-          ),
-          SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: _buildDayLabels(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildSparkline() {
-    final now = DateTime.now();
-    return List.generate(7, (i) {
-      final date = now.subtract(Duration(days: 6 - i));
-      final dateStr = date.toIso8601String().substring(0, 10);
-      final entry = _irmHistory.firstWhere(
-        (h) => h['date'] == dateStr,
-        orElse: () => {},
-      );
-      final score = entry.isNotEmpty ? (entry['score'] as int) : null;
-      final isToday = i == 6;
-
-      // Cas : pas de données
-      if (score == null) {
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 2),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                SizedBox(height: 13),
-                Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-
-      // Variables déclarées AVANT utilisation
-      final barHeight = (score / 100 * 50).clamp(4.0, 50.0);
-      final color = score >= 70
-          ? AppColors.primary
-          : score >= 40
-              ? AppColors.warning
-              : AppColors.error;
-
-      return Expanded(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 2),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isToday)
-                Text(
-                  '$score',
-                  style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold),
-                )
-              else
-                SizedBox(height: 13),
-              Container(
-                height: barHeight,
-                decoration: BoxDecoration(
-                  color: isToday ? color : color.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(3),
-                ),
+              GestureDetector(
+                onTap: _loadIrmScore,
+                child: Icon(Icons.refresh, color: Colors.grey.shade400, size: 18),
               ),
+              SizedBox(width: 4),
+              Icon(Icons.chevron_right, color: AppColors.textLight, size: 20),
             ],
           ),
         ),
-      );
-    });
-  }
-
-  List<Widget> _buildDayLabels() {
-    final days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-    final now = DateTime.now();
-    return List.generate(7, (i) {
-      final date = now.subtract(Duration(days: 6 - i));
-      final dayIndex = date.weekday - 1;
-      final isToday = i == 6;
-      return Expanded(
-        child: Text(
-          days[dayIndex],
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 10,
-            color: isToday ? AppColors.primary : AppColors.textLight,
-            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      );
-    });
-  }
-
-  // ── FACTEURS IRM ──
-  Widget _buildIRMFactors() {
-    final factors = _irmResult!.factors.where((f) => f.impact < 0).take(3).toList();
-    if (factors.isEmpty) return SizedBox.shrink();
-
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: Offset(0, 2))],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('⚠️ Facteurs détectés aujourd\'hui', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textDark)),
-          SizedBox(height: 10),
-          ...factors.map((f) => Padding(
-            padding: EdgeInsets.only(bottom: 8),
-            child: Row(
+    );
+  }
+
+  // ══════════════════════════════════════
+  // COURBE DE TENDANCE 7 JOURS
+  // ══════════════════════════════════════
+
+  Widget _buildTrendChart() {
+    // Agréger par jour (moyenne si plusieurs scores/jour)
+    final Map<String, List<int>> dailyScores = {};
+    for (final entry in _irmHistory) {
+      final date = entry['date'] as String;
+      final score = entry['score'] as int;
+      dailyScores.putIfAbsent(date, () => []).add(score);
+    }
+
+    final sortedDays = dailyScores.keys.toList()..sort();
+    final spots = <FlSpot>[];
+    final labels = <String>[];
+    final dayNames = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+    for (var i = 0; i < sortedDays.length; i++) {
+      final day = sortedDays[i];
+      final scores = dailyScores[day]!;
+      final avg = scores.reduce((a, b) => a + b) / scores.length;
+      spots.add(FlSpot(i.toDouble(), avg));
+      final dt = DateTime.parse(day);
+      labels.add(dayNames[dt.weekday - 1]);
+    }
+
+    if (spots.length < 2) return SizedBox.shrink();
+
+    final lastScore = spots.last.y.round();
+    final firstScore = spots.first.y.round();
+    final diff = lastScore - firstScore;
+    final trendText = diff >= 0 ? '+$diff pts' : '$diff pts';
+    final trendColor = diff >= 0 ? const Color(0xFF2E7D32) : const Color(0xFFF44336);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: Offset(0, 2))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Titre + tendance
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(f.emoji, style: TextStyle(fontSize: 16)),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                Text(
+                  '📈 Évolution 7 jours',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textDark),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IrmHistoryPage())),
+                  child: Row(
                     children: [
-                      Text(f.label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textDark)),
-                      Text(f.description, style: TextStyle(fontSize: 11, color: AppColors.textMedium)),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: trendColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          trendText,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: trendColor),
+                        ),
+                      ),
+                      SizedBox(width: 6),
+                      Icon(Icons.chevron_right, color: AppColors.textLight, size: 16),
                     ],
                   ),
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: f.impact < -10 
-                        ? AppColors.error.withOpacity(0.12)
-                        : AppColors.warning.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${f.impact > 0 ? '+' : ''}${f.impact} pts',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: f.impact < -10 ? AppColors.error : AppColors.warning,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
               ],
             ),
-          )),
-        ],
+            SizedBox(height: 16),
+            // Graphique
+            SizedBox(
+              height: 120,
+              child: LineChart(
+                LineChartData(
+                  minY: 0,
+                  maxY: 100,
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: 25,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: Colors.grey.withOpacity(0.1),
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 30,
+                        interval: 50,
+                        getTitlesWidget: (value, meta) => Text(
+                          '${value.toInt()}',
+                          style: TextStyle(color: AppColors.textLight, fontSize: 10),
+                        ),
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 22,
+                        interval: 1,
+                        getTitlesWidget: (value, meta) {
+                          final idx = value.toInt();
+                          if (idx < 0 || idx >= labels.length) return SizedBox.shrink();
+                          final isLast = idx == labels.length - 1;
+                          return Text(
+                            labels[idx],
+                            style: TextStyle(
+                              color: isLast ? AppColors.primary : AppColors.textLight,
+                              fontSize: 10,
+                              fontWeight: isLast ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: true,
+                      curveSmoothness: 0.3,
+                      color: AppColors.primary,
+                      barWidth: 2.5,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, bar, index) {
+                          final isLast = index == spots.length - 1;
+                          return FlDotCirclePainter(
+                            radius: isLast ? 4 : 2.5,
+                            color: isLast ? AppColors.primary : AppColors.primary.withOpacity(0.6),
+                            strokeWidth: isLast ? 2 : 0,
+                            strokeColor: Colors.white,
+                          );
+                        },
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            AppColors.primary.withOpacity(0.15),
+                            AppColors.primary.withOpacity(0.0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  lineTouchData: LineTouchData(enabled: false),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // ── STREAK CARD ──
+  // ══════════════════════════════════════
+  // 4 FACTEURS RAPIDES
+  // ══════════════════════════════════════
+
+  Widget _buildFactorsRow() {
+    final irm = _irmScore!;
+    final items = [
+      _FactorItem('🛏️', 'Sommeil', irm.sleep.points, irm.sleep.maxPoints),
+      _FactorItem('🚶', 'Activité', irm.activity.points, irm.activity.maxPoints),
+      _FactorItem('🧠', 'Charge', irm.mentalLoad.points, irm.mentalLoad.maxPoints),
+      _FactorItem('💚', 'Stabilité', irm.emotionStability.points, irm.emotionStability.maxPoints),
+    ];
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: Row(
+        children: items.map((item) {
+          final ratio = item.max > 0 ? item.points / item.max : 0.0;
+          final color = ratio >= 0.8
+              ? const Color(0xFF2E7D32)
+              : ratio >= 0.5
+                  ? const Color(0xFFFF9800)
+                  : const Color(0xFFF44336);
+
+          return Expanded(
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: 3),
+              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: Offset(0, 2))],
+              ),
+              child: Column(
+                children: [
+                  Text(item.emoji, style: TextStyle(fontSize: 18)),
+                  SizedBox(height: 4),
+                  Text(
+                    '${item.points}/${item.max}',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color),
+                  ),
+                  SizedBox(height: 2),
+                  Text(item.label, style: TextStyle(fontSize: 9, color: AppColors.textMedium)),
+                  SizedBox(height: 4),
+                  // Mini barre de progression
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: ratio.clamp(0.0, 1.0),
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                      minHeight: 3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════
+  // STREAK CARD
+  // ══════════════════════════════════════
+
   Widget _buildStreakCard() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -594,7 +677,10 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ── MOOD CARD ──
+  // ══════════════════════════════════════
+  // MOOD CARD
+  // ══════════════════════════════════════
+
   Widget _buildMoodCard() {
     final avg = _recentMoods.isEmpty
         ? 0.0
@@ -625,7 +711,10 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ── KEY INSIGHT ──
+  // ══════════════════════════════════════
+  // KEY INSIGHT
+  // ══════════════════════════════════════
+
   Widget _buildKeyInsight() {
     final data = _contextInsights!['data'] as List;
     final Map<String, int> positiveLocations = {};
@@ -661,15 +750,15 @@ class _DashboardPageState extends State<DashboardPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: Offset(0, 2))],
+        border: Border.all(color: AppColors.primary.withOpacity(0.15)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: Offset(0, 2))],
       ),
       child: Row(
         children: [
           Container(
             padding: EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isPositive ? AppColors.success.withOpacity(0.15) : AppColors.error.withOpacity(0.15),
+              color: isPositive ? AppColors.success.withOpacity(0.12) : AppColors.error.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -683,8 +772,10 @@ class _DashboardPageState extends State<DashboardPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(isPositive ? '💡 Insight' : '⚠️ Attention',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textMedium)),
+                Text(
+                  isPositive ? '💡 Insight' : '⚠️ Attention',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textMedium),
+                ),
                 SizedBox(height: 2),
                 Text(
                   isPositive
@@ -700,17 +791,21 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ── SKELETON ──
+  // ══════════════════════════════════════
+  // SKELETON LOADER
+  // ══════════════════════════════════════
+
   Widget _buildSkeletonLoader() {
     return SingleChildScrollView(
       padding: EdgeInsets.all(20),
       child: Column(
         children: [
-          Container(height: 200, decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(20))),
+          SizedBox(height: 20),
+          Container(height: 80, decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(20))),
           SizedBox(height: 12),
-          Container(height: 90, decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(16))),
+          Container(height: 160, decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(16))),
           SizedBox(height: 12),
-          Container(height: 120, decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(16))),
+          Container(height: 60, decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(12))),
           SizedBox(height: 12),
           Row(children: [
             Expanded(child: Container(height: 90, decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(16)))),
@@ -722,25 +817,29 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // ══════════════════════════════════════
+  // HELPERS
+  // ══════════════════════════════════════
+
+  Color _getScoreColor(int score) {
+    if (score >= 80) return const Color(0xFF2E7D32);
+    if (score >= 60) return const Color(0xFF4CAF50);
+    if (score >= 40) return const Color(0xFFFF9800);
+    if (score >= 20) return const Color(0xFFF44336);
+    return const Color(0xFFB71C1C);
+  }
+
   String? _getMostFrequent(Map<String, int> map) {
     if (map.isEmpty) return null;
     var entries = map.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     return entries.first.key;
   }
+}
 
-  String _getRecommendationForZone(IRMZone zone) {
-    switch (zone) {
-      case IRMZone.stable: return 'Continue comme ça 🌟';
-      case IRMZone.pressure: return 'Prends soin de toi aujourd\'hui';
-      case IRMZone.danger: return 'Pause et récupération recommandées';
-    }
-  }
-
-  String _getProtocolForZone(IRMZone zone) {
-    switch (zone) {
-      case IRMZone.stable: return 'Maintien';
-      case IRMZone.pressure: return 'Récupération légère';
-      case IRMZone.danger: return 'Récupération intensive';
-    }
-  }
+class _FactorItem {
+  final String emoji;
+  final String label;
+  final int points;
+  final int max;
+  _FactorItem(this.emoji, this.label, this.points, this.max);
 }

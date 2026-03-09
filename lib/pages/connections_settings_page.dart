@@ -17,9 +17,10 @@ class ConnectionsSettingsPage extends StatefulWidget {
 class _ConnectionsSettingsPageState extends State<ConnectionsSettingsPage> {
   Map<String, bool> _connections = {
     'apple_health': false,
+    'google_fit': false,
     'calendar': false,
   };
-  
+    
   bool _isLoading = true;
   
   @override
@@ -67,12 +68,14 @@ class _ConnectionsSettingsPageState extends State<ConnectionsSettingsPage> {
         // === ACTIVER ===
         switch (sourceType) {
           case 'apple_health':
+          case 'google_fit':
             if (kIsWeb) {
-              message = 'Apple Health non disponible sur web';
+              message = 'Non disponible sur web';
             } else {
               success = await HealthService.requestAuthorization();
+              final name = Platform.isIOS ? 'Apple Health' : 'Health Connect';
               message = success 
-                  ? '✅ Apple Health connecté' 
+                  ? '✅ $name connecté' 
                   : '❌ Permission refusée';
             }
             break;
@@ -251,14 +254,14 @@ class _ConnectionsSettingsPageState extends State<ConnectionsSettingsPage> {
                       SizedBox(height: 16),
 
                       
-                      // Apple Health (si iOS)
-                      if (!kIsWeb && Platform.isIOS) ...[
+                      // Apple Health (iOS) ou Health Connect (Android)
+                      if (!kIsWeb) ...[
                         _buildConnectionTile(
                           icon: Icons.favorite,
-                          title: 'Apple Health',
+                          title: Platform.isIOS ? 'Apple Health' : 'Health Connect',
                           description: 'Sommeil, activité physique',
-                          sourceType: 'apple_health',
-                          isConnected: _connections['apple_health'] ?? false,
+                          sourceType: Platform.isIOS ? 'apple_health' : 'google_fit',
+                          isConnected: _connections[Platform.isIOS ? 'apple_health' : 'google_fit'] ?? false,
                           color: Colors.red,
                         ),
                         

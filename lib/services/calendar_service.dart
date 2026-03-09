@@ -20,39 +20,64 @@ class CalendarService {
     }
   }
   
-  static Future<List<CalendarEventData>> getUpcomingEvents() async {
-    DateTime now = DateTime.now();
-    DateTime tomorrow = now.add(Duration(hours: 24));
+  static Future<List<CalendarEventData>> getTodayEvents() async {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
 
     try {
       final calendarsResult = await _calendar.retrieveCalendars();
-      List<CalendarEventData> allEvents = [];
+      final List<CalendarEventData> allEvents = [];
+      final Set<String> seenEvents = {};
 
       if (calendarsResult.isSuccess && calendarsResult.data != null) {
-        for (var calendar in calendarsResult.data!) {
+        for (final calendar in calendarsResult.data!) {
           final eventsResult = await _calendar.retrieveEvents(
             calendar.id,
-            RetrieveEventsParams(startDate: now, endDate: tomorrow),
+            RetrieveEventsParams(
+              startDate: startOfDay,
+              endDate: endOfDay,
+            ),
           );
 
           if (eventsResult.isSuccess && eventsResult.data != null) {
-            for (var event in eventsResult.data!) {
+            for (final event in eventsResult.data!) {
               if (event.start == null) continue;
-              final isAllDay = event.allDay ?? false;
-              if (isAllDay) continue;
+              if (event.allDay == true) continue;
+              if (event.end == null) continue;
 
-              allEvents.add(CalendarEventData(
-                title: event.title ?? 'Sans titre',
-                startTime: event.start!,
-                isStressful: _isStressfulEvent(event.title ?? ''),
-              ));
+              // Déduplication simple
+              final eventKey =
+                  '${event.title}_${event.start!.toIso8601String()}_${event.end!.toIso8601String()}';
+              if (seenEvents.contains(eventKey)) continue;
+              seenEvents.add(eventKey);
+
+              // Tronquer l'événement à la journée
+              final effectiveStart =
+                  event.start!.isBefore(startOfDay) ? startOfDay : event.start!;
+              final effectiveEnd =
+                  event.end!.isAfter(endOfDay) ? endOfDay : event.end!;
+
+              final durationMinutes =
+                  effectiveEnd.difference(effectiveStart).inMinutes;
+
+              if (durationMinutes <= 0) continue;
+
+              allEvents.add(
+                CalendarEventData(
+                  title: event.title ?? 'Sans titre',
+                  startTime: effectiveStart,
+                  isStressful: _isStressfulEvent(event.title ?? ''),
+                  durationMinutes: durationMinutes,
+                ),
+              );
             }
           }
         }
       }
 
       allEvents.sort((a, b) => a.startTime.compareTo(b.startTime));
-      print('📅 ${allEvents.length} événements trouvés');
+      print('📅 ${allEvents.length} événements trouvés pour aujourd’hui');
       return allEvents;
     } catch (e) {
       print('❌ Erreur récupération événements: $e');

@@ -53,11 +53,15 @@ void main() async {
   if (!kIsWeb) await GoogleTTSService.initialize();
   
   if (!kIsWeb) {
-    await JustAudioBackground.init(
-      androidNotificationChannelId: 'com.moodtips.audio',
-      androidNotificationChannelName: 'MoodTips Audio',
-      androidNotificationOngoing: true,
-    );
+    try {
+      await JustAudioBackground.init(
+        androidNotificationChannelId: 'com.moodtips.audio',
+        androidNotificationChannelName: 'MoodTips Audio',
+        androidNotificationOngoing: true,
+      );
+    } catch (e) {
+      print('⚠️ JustAudioBackground init failed: $e');
+    }
   }
 
   await AppColors.loadTheme();

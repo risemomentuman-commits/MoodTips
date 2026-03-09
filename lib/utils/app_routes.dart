@@ -21,6 +21,8 @@ import '../pages/intelligent_mode_flow_page.dart';
 import '../pages/notifications_Settings_page.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;  // ← DOIT être présent
 import '../pages/legal_notice_page.dart';
+import '../pages/irm_detail_page.dart';
+import '../pages/irm_history_page.dart';
 
 class AppRoutes {
   static const String auth = '/auth';
@@ -65,6 +67,7 @@ class AppRoutes {
       sleep: (context) => SleepPage(),
       legalNotice: (context) => LegalNoticePage(),
       intelligentMode: (context) => IntelligentModeFlowPage(),
+      '/irm-history': (context) => const IrmHistoryPage(),
       context: (context) {
         final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
         return ContextPage(

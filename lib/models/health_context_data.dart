@@ -34,10 +34,14 @@ class CalendarEventData {
   final String title;
   final DateTime startTime;
   final bool isStressful;
+  final int durationMinutes;
 
   CalendarEventData({
     required this.title,
     required this.startTime,
     this.isStressful = false,
+    this.durationMinutes = 30,
   });
+
+  double get durationHours => durationMinutes / 60.0;
 }

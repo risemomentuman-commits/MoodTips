@@ -1,13 +1,22 @@
+// lib/pages/intelligent_mode_flow_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/emotion_detection_service.dart';
-import '../models/detected_emotional_state.dart';
-import '../utils/app_colors.dart';
-import '../widgets/emotion_wheel.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/emotion_detection_service.dart';
+import '../services/irm_calculator_v2.dart';
+import '../services/user_learning_service.dart';
+import '../models/detected_emotional_state.dart';
+import '../models/irm_score_detailed.dart';
+import '../models/user_profile_dynamic.dart';
+import '../repositories/irm_scores_repository.dart';
+import '../repositories/user_profile_repository.dart';
+import '../pages/irm_detail_page.dart';
+import '../pages/irm_history_page.dart';
+import '../utils/app_colors.dart';
 import '../utils/app_routes.dart';
-import '../services/emotion_analysis_service.dart';
-import '../widgets/emotion_alert_widget.dart';
+import '../widgets/battery_widget.dart';
+import '../services/health_service.dart';
+import '../services/calendar_service.dart';
 
 class IntelligentModeFlowPage extends StatefulWidget {
   const IntelligentModeFlowPage({Key? key}) : super(key: key);
@@ -18,64 +27,184 @@ class IntelligentModeFlowPage extends StatefulWidget {
 
 class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
   DetectedEmotionalState? _detectedState;
+  IrmScoreDetailed? _irmScore;
   bool _isLoading = true;
   bool _userValidated = false;
   String? _selectedEmotion;
-  bool _showAlert = false;
-  Future<Map<String, dynamic>>? _emotionAnalysisFuture;
-  
+
   @override
   void initState() {
     super.initState();
-    _runDetection();
-    _loadEmotionAnalysis(); // ✅ Ajoute cette ligne
+    _runAnalysis();
   }
 
-  Future<void> _loadEmotionAnalysis() async {
-    final shouldShow = await EmotionAnalysisService.shouldShowAlert();
-    if (shouldShow) {
-      setState(() {
-        _showAlert = true;
-        _emotionAnalysisFuture = EmotionAnalysisService.analyzeRecentEmotions();
+  Future<void> _validateFromIrm() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      // Mapper le score IRM vers une émotion
+      final score = _irmScore?.score ?? 50;
+      String emotion;
+      if (score >= 80) {
+        emotion = 'heureux';
+      } else if (score >= 60) {
+        emotion = 'calme';
+      } else if (score >= 40) {
+        emotion = 'fatigué';
+      } else if (score >= 20) {
+        emotion = 'stressé';
+      } else {
+        emotion = 'anxieux';
+      }
+
+      final emotionId = _getEmotionId(emotion);
+
+      await Supabase.instance.client.from('mood_logs').insert({
+        'user_id': userId,
+        'emotion_id': emotionId,
+        'created_at': DateTime.now().toIso8601String(),
       });
+
+      HapticFeedback.heavyImpact();
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, AppRoutes.tipsResult, arguments: emotionId);
+      }
+    } catch (e) {
+      print('❌ Erreur: $e');
     }
   }
-    
-  Future<void> _runDetection() async {
+
+  Future<void> _runAnalysis() async {
     setState(() => _isLoading = true);
-    
+
     try {
-      await Future.delayed(Duration(milliseconds: 500)); // UX
-      final state = await EmotionDetectionService.detectCurrentState();
-      
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Lancer les 2 analyses en parallèle
+      final results = await Future.wait([
+        EmotionDetectionService.detectCurrentState(),
+        _calculateIrmScore(userId),
+      ]);
+
+      final detectedState = results[0] as DetectedEmotionalState;
+      final irmScore = results[1] as IrmScoreDetailed?;
+
       setState(() {
-        _detectedState = state;
-        _selectedEmotion = state.primaryEmotion;
+        _detectedState = detectedState;
+        _irmScore = irmScore;
+        _selectedEmotion = detectedState.hasDetection ? detectedState.primaryEmotion : null;
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Erreur détection: $e');
+      print('❌ Erreur analyse: $e');
       setState(() => _isLoading = false);
     }
   }
-  
+
+  Future<IrmScoreDetailed?> _calculateIrmScore(String userId) async {
+    try {
+      final repo = IrmScoresRepository();
+
+      // Réutiliser le score du jour si déjà calculé (avec bon sommeil)
+      final existing = await repo.getLatestScore(userId);
+      if (existing != null &&
+          existing.timestamp.day == DateTime.now().day) {
+        return existing;
+      }
+
+      // Sinon recalculer
+      final learning = UserLearningService();
+      final profileRepo = UserProfileRepository();
+
+      final now = DateTime.now();
+      final profile = await profileRepo.getProfile(userId) ??
+          UserProfileDynamic(userId: userId, createdAt: now, updatedAt: now);
+
+      final realHealth = await HealthService.getAllHealthData();
+      final last7Emotions = await learning.getLast7Emotions(userId);
+
+      double sleepHours = realHealth.sleep?.durationHours ?? 0;
+      if (sleepHours == 0) {
+        try {
+          final today = now.toIso8601String().substring(0, 10);
+          final manual = await Supabase.instance.client
+              .from('irm_scores')
+              .select('manual_sleep_hours')
+              .eq('user_id', userId)
+              .eq('date', today)
+              .maybeSingle();
+          if (manual?['manual_sleep_hours'] != null) {
+            sleepHours = (manual!['manual_sleep_hours'] as num).toDouble();
+          }
+        } catch (_) {}
+        if (sleepHours == 0) sleepHours = 7.0;
+      }
+      final steps = realHealth.activity?.steps ?? 0;
+
+      int totalEvents = 0;
+      int workEvents = 0;
+      int positiveEvents = 0;
+      bool hasCalendar = false;
+      double meetingHours = 0;
+      try {
+        final events = await CalendarService.getTodayEvents();
+        totalEvents = events.length;
+        workEvents = events.where((e) => e.isStressful).length;
+        positiveEvents = events.where((e) => !e.isStressful).length;
+        hasCalendar = totalEvents > 0;
+        meetingHours = events.fold<double>(0, (sum, e) => sum + e.durationHours);
+        print('📅 $totalEvents événements, ${meetingHours.toStringAsFixed(1)}h de réunions');
+      } catch (e) {
+        print('⚠️ Calendrier non disponible: $e');
+      }
+
+      final sources = <String>['checkin'];
+      if (hasCalendar) sources.add('calendar');
+      if (realHealth.sleep != null || (realHealth.activity != null && steps > 0)) {
+        sources.add('apple_health');
+      }
+
+      final score = IrmCalculatorV2.calculate(
+        profile: profile,
+        sleepHours: sleepHours,
+        steps: steps,
+        totalEvents: totalEvents,
+        workEvents: workEvents,
+        positiveEvents: positiveEvents,
+        meetingHours: meetingHours,
+        last7Emotions: last7Emotions,
+        sources: sources,
+       
+        triggeredBy: 'checkin',
+      );
+
+      await repo.saveScore(userId: userId, score: score, triggeredBy: 'checkin');
+      return score;
+    } catch (e) {
+      print('❌ Erreur IRM V2: $e');
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return _buildLoadingScreen();
-    }
-    
-    if (_detectedState == null || !_detectedState!.hasDetection) {
+    if (_isLoading) return _buildLoadingScreen();
+    if (_irmScore == null && (_detectedState == null || !_detectedState!.hasDetection)) {
       return _buildNoDetectionScreen();
     }
-    
-    if (!_userValidated) {
-      return _buildValidationScreen();
-    }
-    
+    if (!_userValidated) return _buildResultScreen();
     return _buildSuccessScreen();
   }
-  
+
+  // ══════════════════════════════════════
+  // ÉCRAN CHARGEMENT
+  // ══════════════════════════════════════
   Widget _buildLoadingScreen() {
     return Scaffold(
       body: Container(
@@ -94,26 +223,16 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(
-                color: AppColors.primary,
-                strokeWidth: 3,
-              ),
+              CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3),
               SizedBox(height: 24),
               Text(
                 '🧠 Analyse en cours...',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textDark),
               ),
               SizedBox(height: 12),
               Text(
-                'Sommeil • Calendrier • Activité',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textMedium,
-                ),
+                'Sommeil • Activité • Agenda • Historique',
+                style: TextStyle(fontSize: 14, color: AppColors.textMedium),
               ),
             ],
           ),
@@ -121,7 +240,10 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
       ),
     );
   }
-  
+
+  // ══════════════════════════════════════
+  // ÉCRAN PAS DE DONNÉES
+  // ══════════════════════════════════════
   Widget _buildNoDetectionScreen() {
     return Scaffold(
       body: Container(
@@ -141,75 +263,40 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
             padding: EdgeInsets.all(20),
             child: Column(
               children: [
-                // Header
                 Row(
                   children: [
-                    IconButton(
-                      icon: Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
+                    IconButton(icon: Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                     Expanded(
-                      child: Text(
-                        'Mode Intelligent',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                      child: Text('Mode Intelligent', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
                     ),
                     SizedBox(width: 48),
                   ],
                 ),
-                
                 Expanded(
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.sensors_off,
-                          size: 80,
-                          color: AppColors.warning,
-                        ),
+                        Icon(Icons.sensors_off, size: 80, color: AppColors.warning),
                         SizedBox(height: 24),
-                        Text(
-                          'Pas assez de données',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        Text('Pas assez de données', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                         SizedBox(height: 12),
                         Text(
-                          'Connecte tes sources de données\npour activer la détection auto',
+                          'Fais ton premier check-in\npour activer l\'analyse intelligente',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: AppColors.textMedium,
-                            height: 1.5,
-                          ),
+                          style: TextStyle(fontSize: 15, color: AppColors.textMedium, height: 1.5),
                         ),
                         SizedBox(height: 32),
                         ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            // Ici tu peux ajouter navigation vers ConnectionsSettingsPage
-                          },
-                          icon: Icon(Icons.settings),
-                          label: Text('Gérer les connexions'),
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(Icons.mood),
+                          label: Text('Faire un check-in'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                        ),
-                        SizedBox(height: 16),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text('Utiliser Mode Standard'),
                         ),
                       ],
                     ),
@@ -222,8 +309,23 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
       ),
     );
   }
-  
-  Widget _buildValidationScreen() {
+
+  // ══════════════════════════════════════
+  // ÉCRAN RÉSULTATS (IRM V2 + Émotion)
+  // ══════════════════════════════════════
+  Widget _buildResultScreen() {
+    final irm = _irmScore;
+    final hasEmotion = _detectedState != null && _detectedState!.hasDetection;
+
+    // Ajoute cette ligne :
+    final scoreColor = irm != null && irm.score >= 80
+        ? const Color(0xFF2E7D32)
+        : irm != null && irm.score >= 60
+            ? const Color(0xFF4CAF50)
+            : irm != null && irm.score >= 40
+                ? const Color(0xFFFF9800)
+                : const Color(0xFFF44336);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -245,96 +347,74 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
                 padding: EdgeInsets.all(20),
                 child: Row(
                   children: [
-                    IconButton(
-                      icon: Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
+                    IconButton(icon: Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                     Expanded(
-                      child: Text(
-                        'Mode Intelligent',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                      child: Text('Analyse Intelligente', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
                     ),
                     SizedBox(width: 48),
-                    
-                    // ✅ Alerte émotionnelle Mode Intelligent
-                    if (_showAlert)
-                      FutureBuilder<Map<String, dynamic>>(
-                        future: _emotionAnalysisFuture,
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) return SizedBox.shrink();
-                          final analysis = snapshot.data!;
-                          if (!analysis['shouldShow']) return SizedBox.shrink();
-                          return EmotionAlertWidget(
-                            alertLevel: analysis['alertLevel'],
-                            message: analysis['message'],
-                            action: analysis['action'],
-                            consecutiveNegative: analysis['consecutiveNegative'],
-                            onDismiss: () => setState(() => _showAlert = false),
-                          );
-                        },
-                      ),
                   ],
                 ),
               ),
-              
+
               Expanded(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     children: [
-                      // État détecté
-                      Container(
-                        padding: EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          gradient: AppColors.primaryGradient,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: AppColors.cardShadow,
+                      // ── BATTERIE IRM V2 ──
+                      if (irm != null) ...[
+                        
+                        
+                        // Facteurs rapides
+                        _buildFactorsGrid(irm),
+                        SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => IrmDetailPage(score: irm)),
+                          ),
+                          child: Text(
+                            'Voir le détail IRM →',
+                            style: TextStyle(color: AppColors.primary.withOpacity(0.7), fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
                         ),
-                        child: Column(
-                          children: [
-                            Text(
-                              '✅ État détecté',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 14,
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              _getEmotionEmoji(_selectedEmotion!),
-                              style: TextStyle(fontSize: 64),
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              _capitalizeEmotion(_selectedEmotion!),
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Confiance: ${(_detectedState!.confidence * 100).toInt()}%',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      
-                      SizedBox(height: 20),
-                      
-                      // Raisons
-                      if (_detectedState!.detectionReasons.isNotEmpty)
+                        SizedBox(height: 16),
+
+                      // ── ÉMOTION DÉTECTÉE ──
+                      if (hasEmotion) ...[
                         Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: AppColors.cardShadow,
+                          ),
+                          child: Column(
+                            children: [
+                              Text('Émotion détectée', style: TextStyle(fontSize: 14, color: AppColors.textMedium)),
+                              SizedBox(height: 12),
+                              Text(_getEmotionEmoji(_selectedEmotion!), style: TextStyle(fontSize: 48)),
+                              SizedBox(height: 8),
+                              Text(
+                                _capitalizeEmotion(_selectedEmotion!),
+                                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Confiance: ${(_detectedState!.confidence * 100).toInt()}%',
+                                style: TextStyle(fontSize: 13, color: AppColors.textMedium),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                      ],
+
+                      // ── RAISONS ──
+                      if (_detectedState != null && _detectedState!.detectionReasons.isNotEmpty)
+                        Container(
+                          width: double.infinity,
                           padding: EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -348,13 +428,7 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
                                 children: [
                                   Icon(Icons.info_outline, color: AppColors.primary, size: 20),
                                   SizedBox(width: 8),
-                                  Text(
-                                    'Pourquoi cette détection ?',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
+                                  Text('Pourquoi cette analyse ?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                                 ],
                               ),
                               SizedBox(height: 12),
@@ -366,66 +440,61 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
                                     children: [
                                       Icon(Icons.check_circle, size: 16, color: AppColors.success),
                                       SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          reason,
-                                          style: TextStyle(height: 1.4, fontSize: 14),
-                                        ),
-                                      ),
+                                      Expanded(child: Text(reason, style: TextStyle(height: 1.4, fontSize: 14))),
                                     ],
                                   ),
                                 );
-                              }).toList(),
+                              }),
                             ],
                           ),
                         ),
-                      
+
+                      // ── CONSEIL PRINCIPAL ──
+                      if (irm != null) ...[
+                        SizedBox(height: 16),
+                        _buildMainConseil(irm),
+                      ],
+
                       SizedBox(height: 24),
+                    ],
                     ],
                   ),
                 ),
               ),
-              
-              // Boutons bas
+
+              // ── BOUTONS BAS ──
               Container(
                 padding: EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: Offset(0, -2),
-                    ),
-                  ],
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: Offset(0, -2))],
                 ),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _showManualSelection,
-                        child: Text('Modifier'),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: AppColors.primary),
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    if (hasEmotion) ...[
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _showManualSelection,
+                          child: Text('Modifier'),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: AppColors.primary),
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
-                    ),
-                    SizedBox(width: 12),
+                      SizedBox(width: 12),
+                    ],
                     Expanded(
                       flex: 2,
                       child: ElevatedButton(
-                        onPressed: _validateEmotion,
-                        child: Text('C\'est ça ! ✓'),
+                        onPressed: hasEmotion ? _validateEmotion : _validateFromIrm,
+                        child: Text(hasEmotion ? 'Valider ✓' : 'Continuer →'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
                           padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
                     ),
@@ -438,7 +507,96 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
       ),
     );
   }
-  
+
+  // ══════════════════════════════════════
+  // GRILLE 4 FACTEURS
+  // ══════════════════════════════════════
+  Widget _buildFactorsGrid(IrmScoreDetailed irm) {
+    final items = [
+      {'emoji': '🛏️', 'label': 'Sommeil', 'points': irm.sleep.points, 'max': irm.sleep.maxPoints},
+      {'emoji': '🚶', 'label': 'Activité', 'points': irm.activity.points, 'max': irm.activity.maxPoints},
+      {'emoji': '🧠', 'label': 'Charge', 'points': irm.mentalLoad.points, 'max': irm.mentalLoad.maxPoints},
+      {'emoji': '💚', 'label': 'Stabilité', 'points': irm.emotionStability.points, 'max': irm.emotionStability.maxPoints},
+    ];
+
+    return Row(
+      children: items.map((item) {
+        final points = item['points'] as int;
+        final max = item['max'] as int;
+        final ratio = max > 0 ? points / max : 0.0;
+        final color = ratio >= 0.8
+            ? const Color(0xFF2E7D32)
+            : ratio >= 0.5
+                ? const Color(0xFFFF9800)
+                : const Color(0xFFF44336);
+
+        return Expanded(
+          child: Container(
+            margin: EdgeInsets.symmetric(horizontal: 4),
+            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: Offset(0, 2))],
+            ),
+            child: Column(
+              children: [
+                Text('${item['emoji']}', style: TextStyle(fontSize: 20)),
+                SizedBox(height: 4),
+                Text('$points/${max}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+                SizedBox(height: 2),
+                Text('${item['label']}', style: TextStyle(fontSize: 10, color: AppColors.textMedium)),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // ══════════════════════════════════════
+  // CONSEIL PRINCIPAL
+  // ══════════════════════════════════════
+  Widget _buildMainConseil(IrmScoreDetailed irm) {
+    String? conseil;
+    for (final f in [irm.sleep, irm.activity, irm.mentalLoad, irm.emotionStability]) {
+      if (f.conseil != null) {
+        conseil = f.conseil;
+        break;
+      }
+    }
+    if (conseil == null) return SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Text('💡', style: TextStyle(fontSize: 20)),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Conseil du jour', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                SizedBox(height: 4),
+                Text(conseil, style: TextStyle(fontSize: 13, color: AppColors.textMedium, height: 1.4)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════
+  // ÉCRAN SUCCÈS
+  // ══════════════════════════════════════
   Widget _buildSuccessScreen() {
     return Scaffold(
       body: Container(
@@ -446,10 +604,7 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppColors.success.withOpacity(0.1),
-              AppColors.backgroundPrimary,
-            ],
+            colors: [AppColors.success.withOpacity(0.1), AppColors.backgroundPrimary],
           ),
         ),
         child: SafeArea(
@@ -461,32 +616,13 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
                 children: [
                   Container(
                     padding: EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.check_circle,
-                      size: 80,
-                      color: AppColors.success,
-                    ),
+                    decoration: BoxDecoration(color: AppColors.success.withOpacity(0.1), shape: BoxShape.circle),
+                    child: Icon(Icons.check_circle, size: 80, color: AppColors.success),
                   ),
                   SizedBox(height: 32),
-                  Text(
-                    'État enregistré !',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text('État enregistré !', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                   SizedBox(height: 12),
-                  Text(
-                    'Ton ressenti a été sauvegardé',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: AppColors.textMedium,
-                    ),
-                  ),
+                  Text('Ton ressenti a été sauvegardé', style: TextStyle(fontSize: 16, color: AppColors.textMedium)),
                   SizedBox(height: 48),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context),
@@ -496,9 +632,8 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                 ],
@@ -509,7 +644,10 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
       ),
     );
   }
-  
+
+  // ══════════════════════════════════════
+  // HELPERS
+  // ══════════════════════════════════════
   void _showManualSelection() {
     showModalBottomSheet(
       context: context,
@@ -524,32 +662,17 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
           ),
           child: Column(
             children: [
-              // Header
               Container(
                 padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: AppColors.surfaceLight),
-                  ),
-                ),
+                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.surfaceLight))),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Choisis ton émotion',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
+                    Text('Choisis ton émotion', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(icon: Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                   ],
                 ),
               ),
-              // Liste émotions simplifiée (à remplacer par ta roue si tu veux)
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.all(20),
@@ -569,7 +692,7 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
       },
     );
   }
-  
+
   Widget _buildEmotionTile(String emotion, String emoji) {
     return GestureDetector(
       onTap: () {
@@ -581,14 +704,10 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
         margin: EdgeInsets.only(bottom: 12),
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _selectedEmotion == emotion 
-            ? AppColors.primary.withOpacity(0.1)
-            : Colors.white,
+          color: _selectedEmotion == emotion ? AppColors.primary.withOpacity(0.1) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _selectedEmotion == emotion 
-              ? AppColors.primary
-              : AppColors.surfaceLight,
+            color: _selectedEmotion == emotion ? AppColors.primary : AppColors.surfaceLight,
             width: 2,
           ),
         ),
@@ -596,84 +715,64 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
           children: [
             Text(emoji, style: TextStyle(fontSize: 32)),
             SizedBox(width: 16),
-            Text(
-              _capitalizeEmotion(emotion),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            Text(_capitalizeEmotion(emotion), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
     );
   }
-  
+
   Future<void> _validateEmotion() async {
     try {
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId == null) throw Exception('Non connecté');
-      
-      // Sauvegarder l'émotion
+
       await Supabase.instance.client.from('mood_logs').insert({
         'user_id': userId,
         'emotion_id': _getEmotionId(_selectedEmotion!),
         'created_at': DateTime.now().toIso8601String(),
       });
-      
+
       HapticFeedback.heavyImpact();
-      
+
       if (mounted) {
-        // ✅ Naviguer vers TipsResultPage avec l'emotionId
-        Navigator.pushReplacementNamed(
-          context,
-          AppRoutes.tipsResult,
-          arguments: _getEmotionId(_selectedEmotion!), // Passer l'emotionId
-        );
+        Navigator.pushReplacementNamed(context, AppRoutes.tipsResult, arguments: _getEmotionId(_selectedEmotion!));
       }
-      
     } catch (e) {
       print('❌ Erreur sauvegarde: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error));
       }
     }
   }
-  
+
   int _getEmotionId(String emotion) {
-    // Map simplifié - à adapter selon ta table emotions
     Map<String, int> emotionIds = {
-      'heureux': 1,
-      'calme': 2,
-      'fatigué': 3,
-      'anxieux': 4,
-      'triste': 5,
-      'stressé': 6,
+      'heureux': 1, 'calme': 2, 'fatigué': 3,
+      'anxieux': 4, 'triste': 5, 'stressé': 6,
     };
     return emotionIds[emotion] ?? 1;
   }
-  
+
   String _getEmotionEmoji(String emotion) {
     Map<String, String> emojis = {
-      'heureux': '😊',
-      'calme': '😌',
-      'fatigué': '😴',
-      'anxieux': '😰',
-      'triste': '😢',
-      'stressé': '😤',
-      'débordé': '🤯',
-      'reposé': '😊',
-      'énergique': '⚡',
+      'heureux': '😊', 'calme': '😌', 'fatigué': '😴',
+      'anxieux': '😰', 'triste': '😢', 'stressé': '😤',
+      'débordé': '🤯', 'reposé': '😊', 'énergique': '⚡',
+      'serein': '😌',
     };
     return emojis[emotion] ?? '😐';
   }
-  
+
   String _capitalizeEmotion(String emotion) {
     return emotion[0].toUpperCase() + emotion.substring(1);
+  }
+
+  String _getMotivationalMessage(int score) {
+    if (score >= 80) return 'Tu es en pleine forme aujourd\'hui ! 🔥';
+    if (score >= 60) return 'Bonne énergie, continue comme ça 💪';
+    if (score >= 40) return 'Journée mitigée, prends soin de toi 🌿';
+    if (score >= 20) return 'Énergie basse — accorde-toi du repos 🧘';
+    return 'Alerte énergie critique — priorité au repos ⚠️';
   }
 }

@@ -10,9 +10,20 @@ import '../widgets/emotion_alert_widget.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../utils/badge_checker.dart';
-import '../services/irm_service.dart';
+import '../services/irm_calculator_v2.dart';
+import '../services/user_learning_service.dart';
+import '../models/irm_score_detailed.dart';
+import '../repositories/irm_scores_repository.dart';
+import '../pages/irm_detail_page.dart';
+import '../pages/irm_history_page.dart';
 import '../services/notification_service.dart';
 import '../services/dashboard_cache.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../repositories/user_profile_repository.dart';
+import '../models/user_profile_dynamic.dart';
+import '../services/health_service.dart';
+import '../widgets/battery_widget.dart';
+import '../services/calendar_service.dart';
 
 class MoodCheckPage extends StatefulWidget {
    const MoodCheckPage({Key? key}) : super(key: key); // ✅ Accepte maintenant une clé
@@ -31,15 +42,20 @@ class MoodCheckPage extends StatefulWidget {
 
 class _MoodCheckPageState extends State<MoodCheckPage> {
   // Variables IRM
-  IRMResult? _irmResult;
+  IrmScoreDetailed? _irmScore;
   bool _irmLoading = false;
-  double? _estimatedSleepHours; // si saisie manuelle
+  double? _estimatedSleepHours;bool _hasSleepData = false; // si saisie manuelle
   Future<List<Emotion>>? _emotionsFuture;
   Future<UserProfile?>? _profileFuture;
   Future<Map<String, dynamic>>? _emotionAnalysisFuture;
   
   bool _isExpressMode = true;
   bool _showAlert = true;
+  bool _hasCheckedInToday = false;
+  bool _showCheckinExplainer = true;
+  bool get hasSleepData {
+    return _estimatedSleepHours != null && _estimatedSleepHours! > 0;
+  }
   
   @override
   void initState() {
@@ -48,6 +64,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
     _profileFuture = SupabaseService.getProfile();
     _loadEmotionAnalysis();
     _loadIRM();
+    _checkTodayCheckin();
   }
 
   void reload() {
@@ -67,58 +84,175 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
     }
   }
 
+  Future<void> _checkTodayCheckin() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+      
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      final response = await Supabase.instance.client
+          .from('mood_logs')
+          .select('id')
+          .eq('user_id', userId)
+          .gte('created_at', '${today}T00:00:00')
+          .limit(1)
+          .maybeSingle();
+      
+      setState(() {
+        _hasCheckedInToday = response != null;
+      });
+    } catch (e) {
+      print('⚠️ Erreur vérification check-in: $e');
+    }
+  }
+
   Future<void> _loadIRM() async {
     setState(() => _irmLoading = true);
     try {
-      if (_estimatedSleepHours == null) {
-        _estimatedSleepHours = await IRMService.loadManualSleepHours();
-        print('🛏️ Sommeil chargé depuis Supabase: $_estimatedSleepHours');
+      final repo = IrmScoresRepository();
+      final learning = UserLearningService();
+      final profileRepo = UserProfileRepository();
+
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) {
+        setState(() => _irmLoading = false);
+        return;
       }
-      final result = await IRMService.calculateScore(
-        estimatedSleepHours: _estimatedSleepHours,
+
+      if (_estimatedSleepHours == null) {
+        _estimatedSleepHours = await _loadManualSleepHours();
+      }
+
+      
+
+      // Récupérer les données
+      final now = DateTime.now();
+      final profile = await profileRepo.getProfile(userId) ??
+          UserProfileDynamic(
+            userId: userId,
+            createdAt: now,
+            updatedAt: now,
+          );
+      final realHealth = await HealthService.getAllHealthData();
+      final last7Emotions = await learning.getLast7Emotions(userId);
+
+      final sleepHours = _estimatedSleepHours ?? realHealth.sleep?.durationHours ?? 7.0;
+      final steps = realHealth.activity?.steps ?? 0;
+      // Charger les événements calendrier
+      int totalEvents = 0;
+      int workEvents = 0;
+      int positiveEvents = 0;
+      bool hasCalendar = false;
+      double meetingHours = 0;
+      try {
+        final events = await CalendarService.getTodayEvents();
+        totalEvents = events.length;
+        workEvents = events.where((e) => e.isStressful).length;
+        positiveEvents = events.where((e) => !e.isStressful).length;
+        hasCalendar = totalEvents > 0;
+        meetingHours = events.fold<double>(0, (sum, e) => sum + e.durationHours);
+        print('📅 $totalEvents événements, ${meetingHours.toStringAsFixed(1)}h de réunions');
+      } catch (e) {
+        print('⚠️ Calendrier non disponible: $e');
+      }
+
+      final sources = <String>['checkin'];
+      if (hasCalendar) sources.add('calendar');
+      bool hasSleepData = realHealth.sleep != null;
+      _hasSleepData = hasSleepData;
+      if (hasSleepData) {
+        sources.add('apple_health');
+      } else if (_estimatedSleepHours != null) {
+        sources.add('manual');
+      }
+      if (realHealth.activity != null && steps > 0) {
+        if (!sources.contains('apple_health')) sources.add('apple_health');
+      }
+
+      final score = IrmCalculatorV2.calculate(
+        profile: profile,
+        sleepHours: sleepHours,
+        steps: steps,
+        totalEvents: totalEvents,
+        workEvents: workEvents,
+        positiveEvents: positiveEvents,
+        meetingHours: meetingHours,
+        last7Emotions: last7Emotions,
+        sources: sources,
+        
+        triggeredBy: 'auto',
       );
+
+      // Sauvegarder
+      try {
+        print('🔍 MoodCheck - Saving IRM score: ${score.score} for user: $userId');
+        await repo.saveScore(
+          userId: userId,
+          score: score,
+          triggeredBy: 'auto',
+        );
+        print('🔍 MoodCheck - Score saved OK');
+      } catch (e) {
+        print('❌ MoodCheck - Erreur save score: $e');
+      }
+      await learning.saveDailyHealthData(
+        userId: userId,
+        sleepHours: sleepHours,
+        sleepSource: realHealth.sleep != null ? 'health' : (_estimatedSleepHours != null ? 'manual' : 'estimated'),
+        steps: steps,
+        totalEvents: totalEvents,
+        workEvents: workEvents,
+        positiveEvents: positiveEvents,
+      );
+
       setState(() {
-        _irmResult = result;
+        _irmScore = score;
         _irmLoading = false;
       });
     } catch (e) {
-      print('❌ Erreur IRM: $e');
+      print('❌ Erreur IRM V2: $e');
       setState(() => _irmLoading = false);
     }
   }
 
-  Future<void> _showExpressSuccess(String emotionName) async {
-    HapticFeedback.heavyImpact();
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Check-in validé ! Humeur "$emotionName" enregistrée 🎉',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.success,
-        duration: Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
+  Future<double?> _loadManualSleepHours() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return null;
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      final response = await Supabase.instance.client
+          .from('daily_health_data')
+          .select('sleep_duration_hours')
+          .eq('user_id', userId)
+          .eq('date', today)
+          .eq('sleep_source', 'manual')
+          .maybeSingle();
+      if (response?['sleep_duration_hours'] != null) {
+        return (response!['sleep_duration_hours'] as num).toDouble();
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
 
-    await BadgeChecker.checkAndShowBadges(context);
-    
-    setState(() {
-      _profileFuture = SupabaseService.getProfile();
-      _loadEmotionAnalysis();
-    });
+  Future<void> _saveManualSleepHours(double hours) async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      
+      await Supabase.instance.client.from('daily_health_data').upsert({
+        'user_id': userId,
+        'date': today,
+        'sleep_duration_hours': hours,
+        'sleep_source': 'manual',
+      }, onConflict: 'user_id,date');
+      
+      print('✅ Sommeil manuel sauvegardé: ${hours}h');
+    } catch (e) {
+      print('❌ Erreur saveManualSleepHours: $e');
+    }
   }
 
   @override
@@ -192,7 +326,13 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                               child: IconButton(
                                 padding: EdgeInsets.zero,
                                 icon: Icon(Icons.bar_chart, color: AppColors.primary, size: 20),
-                                onPressed: () => Navigator.pushNamed(context, AppRoutes.dashboard),
+                                onPressed: () {
+                                  if (Navigator.canPop(context)) {
+                                    Navigator.pop(context);
+                                  } else {
+                                    Navigator.pushNamed(context, AppRoutes.dashboard);
+                                  }
+                                },
                                 tooltip: 'Mes statistiques',
                               ),
                             ),
@@ -403,13 +543,18 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                           onEmotionSelected: (emotion) async {
                             HapticFeedback.mediumImpact();
                             final moodLog = await SupabaseService.createMoodLog(emotionId: emotion.id);
-                            DashboardCache.clear(); // ✅ Force le dashboard à se recharger
+                            DashboardCache.clear();
                             if (moodLog == null) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Erreur lors de l\'enregistrement'), backgroundColor: AppColors.error),
                               );
                               return;
                             }
+                            
+                            // ✅ Recalculer IRM avec l'émotion fraîchement enregistrée
+                            await _loadIRM();
+                            setState(() => _hasCheckedInToday = true);
+                            
                             await BadgeChecker.checkAndShowBadges(context);
                             Navigator.pushNamed(context, AppRoutes.context, arguments: {
                               'emotionId': emotion.id,
@@ -444,32 +589,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   ),
                   
                   SizedBox(height: 8),
-                  
-                  // Bouton Feedback
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      final url = 'https://docs.google.com/forms/d/e/1FAIpQLSd5GIhsTxsvTGQULpspFzYboTV3jKXCG8ymRTSU4EYQdOlpUQ/viewform';
-                      try {
-                        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Impossible d\'ouvrir le lien')),
-                        );
-                      }
-                    },
-                    icon: Icon(Icons.feedback, size: 20),
-                    label: Text('Feedback Test MoodTips'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.secondary, // ✅ Secondary au lieu de warning
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                  
-                  SizedBox(height: 20),
+                
                 ],         // ferme children
               ),             // ferme Column
             ),               // ferme SingleChildScrollView  
@@ -478,6 +598,73 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
       ),                     // ferme Container gradient
     ),                       // ferme Container couleur
   );
+  }
+
+  Widget _buildCheckinBanner() {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
+      child: Container(
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _hasCheckedInToday
+              ? AppColors.success.withOpacity(0.1)
+              : AppColors.primary.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _hasCheckedInToday
+                ? AppColors.success.withOpacity(0.3)
+                : AppColors.primary.withOpacity(0.2),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  _hasCheckedInToday ? Icons.check_circle : Icons.radio_button_unchecked,
+                  color: _hasCheckedInToday ? AppColors.success : AppColors.primary,
+                  size: 20,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _hasCheckedInToday
+                        ? 'Check-in du jour validé ✓'
+                        : 'Check-in du jour · à compléter',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _hasCheckedInToday ? AppColors.success : AppColors.textDark,
+                    ),
+                  ),
+                ),
+                if (!_hasCheckedInToday)
+                  GestureDetector(
+                    onTap: () => setState(() => _showCheckinExplainer = !_showCheckinExplainer),
+                    child: Icon(
+                      _showCheckinExplainer ? Icons.expand_less : Icons.expand_more,
+                      color: AppColors.textMedium,
+                      size: 22,
+                    ),
+                  ),
+              ],
+            ),
+            if (!_hasCheckedInToday && _showCheckinExplainer) ...[
+              SizedBox(height: 8),
+              Text(
+                'Plus tu fais ton check-in régulièrement, plus MoodTips apprend à te connaître et personnalise tes conseils.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMedium,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildIRMWidget() {
@@ -500,157 +687,138 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
       );
     }
 
-    if (_irmResult == null) return SizedBox.shrink();
+    if (_irmScore == null) return SizedBox.shrink();
 
-    final irm = _irmResult!;
+    final irm = _irmScore!;
+    final scoreColor = irm.score >= 80
+        ? const Color(0xFF2E7D32)
+        : irm.score >= 60
+            ? const Color(0xFF4CAF50)
+            : irm.score >= 40
+                ? const Color(0xFFFF9800)
+                : const Color(0xFFF44336);
 
-    final zoneColor = irm.zone == IRMZone.stable
-        ? AppColors.primary
-        : irm.zone == IRMZone.pressure
-            ? AppColors.warning
-            : AppColors.error;
+    // Conseil principal
+    String? mainConseil;
+    final mainFactorLabel = irm.mainFactor;
+    for (final f in [irm.sleep, irm.activity, irm.mentalLoad, irm.emotionStability]) {
+      if (f.conseil != null) {
+        mainConseil = f.conseil;
+        break;
+      }
+    }
 
-    final zoneBg = zoneColor.withOpacity(0.08);
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: Offset(0, 2))],
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => IrmDetailPage(score: irm)),
       ),
-      child: Column(
-        children: [
-          // ── HEADER ──
-          Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: zoneBg,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: Row(
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: Offset(0, 4))],
+        ),
+        child: Column(
+          children: [
+            _buildCheckinBanner(),
+            // Header + Batterie sur la même ligne
+            Row(
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: zoneColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: zoneColor.withOpacity(0.3), blurRadius: 8, offset: Offset(0, 3))],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('${irm.score}', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                      Text('/100', style: TextStyle(color: Colors.white70, fontSize: 8)),
-                    ],
-                  ),
+                // Batterie compacte à gauche
+                BatteryWidget(
+                  percentage: irm.score,
+                  isCharging: irm.score > 60,
+                  width: 100,
+                  height: 45,
                 ),
-                SizedBox(width: 10),
+                SizedBox(width: 16),
+                // Infos à droite
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(irm.zoneEmoji, style: TextStyle(fontSize: 13)),
-                          SizedBox(width: 4),
-                          Text(irm.zoneLabel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: zoneColor)),
-                          SizedBox(width: 4),
-                          Text('· IRM', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
+                          Text(
+                            'Énergie Mentale',
+                            style: TextStyle(color: Color(0xFF1A1A2E), fontSize: 14, fontWeight: FontWeight.w600),
+                          ),
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: _loadIRM,
+                                child: Icon(Icons.refresh, color: Colors.grey.shade500, size: 18),
+                              ),
+                              SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IrmHistoryPage())),
+                                child: Icon(Icons.timeline, color: Colors.grey.shade500, size: 18),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
-                      SizedBox(height: 2),
-                      Text(irm.zoneDescription, style: TextStyle(fontSize: 11, color: AppColors.textMedium, height: 1.3), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      SizedBox(height: 4),
+                      if (mainConseil != null)
+                        Text(
+                          mainConseil,
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                     ],
                   ),
                 ),
-                GestureDetector(
-                  onTap: _loadIRM,
-                  child: Padding(padding: EdgeInsets.all(4), child: Icon(Icons.refresh, color: AppColors.textLight, size: 16)),
-                ),
               ],
             ),
-          ),
 
-          // ── BARRE PROGRESSION ──
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: LinearProgressIndicator(
-                value: irm.score / 100,
-                backgroundColor: Colors.grey[200],
-                valueColor: AlwaysStoppedAnimation<Color>(zoneColor),
-                minHeight: 4,
-              ),
+            // Lien détail
+            SizedBox(height: 8),
+            Text(
+              'Voir le détail →',
+              style: TextStyle(color: scoreColor, fontSize: 12, fontWeight: FontWeight.w600),
             ),
-          ),
 
-          // ── FACTEUR + PROTOCOLE ──
-          Padding(
-            padding: EdgeInsets.only(left: 12, right: 12, bottom: 10),
-            child: Row(
-              children: [
-                if (irm.topFactor != null) ...[
-                  Text(irm.topFactor!.emoji, style: TextStyle(fontSize: 12)),
-                  SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      irm.topFactor!.label,
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textDark),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            // Saisie sommeil si pas de Health
+            if (!hasSleepData && _estimatedSleepHours == null) ...[
+              SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('💤 Combien d\'heures as-tu dormi ?', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+                    SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildSleepButton('< 5h', 5.0),
+                        _buildSleepButton('5-6h', 6.0),
+                        _buildSleepButton('6-7h', 7.0),
+                        _buildSleepButton('7-8h', 7.5),
+                        _buildSleepButton('8h+', 8.5),
+                      ],
                     ),
-                  ),
-                  SizedBox(width: 8),
-                ],
-                Text('💡', style: TextStyle(fontSize: 12)),
-                SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    irm.protocol,
-                    style: TextStyle(fontSize: 10, color: AppColors.textMedium),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-
-          // ── SOMMEIL INCONNU ──
-          if (irm.sleepSource == SleepDataSource.unknown)
-            Container(
-              margin: EdgeInsets.only(left: 12, right: 12, bottom: 12),
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.warning.withOpacity(0.3)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('💤 Combien d\'heures as-tu dormi ?', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textDark)),
-                  SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildSleepButton('< 5h', 5.0),   // au lieu de 4.5
-                      _buildSleepButton('5-6h', 6.0),   // au lieu de 5.5
-                      _buildSleepButton('6-7h', 7.0),   // au lieu de 6.5
-                      _buildSleepButton('7-8h', 7.5),   // ok
-                      _buildSleepButton('8h+', 8.5),    // ok
-                    ],
-                  ),
-                ],
-              ),
-            ),
-        ],
+            ],
+          ],
+        ),
       ),
     );
-  }
+  }       // ferme _buildIRMWidget
 
   Widget _buildSleepButton(String label, double hours) {
     final isSelected = _estimatedSleepHours == hours;
@@ -658,8 +826,8 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
       onTap: () async {
         setState(() => _estimatedSleepHours = hours);
         HapticFeedback.lightImpact();
-        await IRMService.saveManualSleepHours(hours); // ✅ Sauvegarde pour la journée
-        _loadIRM(); // Recalcule l'IRM avec la nouvelle valeur
+        await _saveManualSleepHours(hours);
+        _loadIRM();
       },
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),

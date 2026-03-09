@@ -15,15 +15,18 @@ class HealthService {
   static final Health _health = Health();
 
   static final List<HealthDataType> _types = [
-    HealthDataType.SLEEP_IN_BED,
-    HealthDataType.SLEEP_ASLEEP,
-    HealthDataType.SLEEP_DEEP,
-    HealthDataType.SLEEP_LIGHT,
-    HealthDataType.SLEEP_REM,
+    if (defaultTargetPlatform == TargetPlatform.iOS) ...[
+      HealthDataType.SLEEP_IN_BED,
+      HealthDataType.SLEEP_ASLEEP,
+      HealthDataType.SLEEP_DEEP,
+      HealthDataType.SLEEP_LIGHT,
+      HealthDataType.SLEEP_REM,
+    ] else ...[
+      HealthDataType.SLEEP_SESSION,
+    ],
     HealthDataType.STEPS,
     HealthDataType.ACTIVE_ENERGY_BURNED,
   ];
-
   /// Demande permissions selon la plateforme
   static Future<bool> requestAuthorization() async {
     try {
@@ -53,7 +56,11 @@ class HealthService {
     try {
       // ✅ Lire uniquement SLEEP_IN_BED (temps au lit total calculé par iOS)
       List<HealthDataPoint> sleepData = await _health.getHealthDataFromTypes(
-        types: [HealthDataType.SLEEP_IN_BED],
+        types: [
+          defaultTargetPlatform == TargetPlatform.iOS
+              ? HealthDataType.SLEEP_IN_BED
+              : HealthDataType.SLEEP_SESSION,
+        ],
         startTime: yesterday,
         endTime: now,
       );

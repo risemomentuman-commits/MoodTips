@@ -10,7 +10,7 @@ class EmotionDetectionService {
     print('🧠 Début détection état émotionnel...');
 
     final healthData = await HealthService.getAllHealthData();
-    final calendarEvents = await CalendarService.getUpcomingEvents();
+    final calendarEvents = await CalendarService.getTodayEvents();
     final moodHistory = await _getRecentMoodHistory();
     final now = DateTime.now();
 
