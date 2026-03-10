@@ -290,6 +290,12 @@ class CalendarService {
     'acupuncture', 'réflexologie', 'reflexologie',
     'bain', 'detox', 'bien-être', 'bien être',
     'coiffeur', 'coiffeuse', 'esthéticienne', 'manucure',
+    // Rappels positifs
+    'choses positives', 'gratitude', 'positif', 'affirmation',
+    'journal intime', 'bilan positif',
+    // Rappels / Pense-bêtes
+    'penser à', 'ne pas oublier', 'rappel', 'reminder',
+    'todo', 'to do', 'à faire', 'liste',
   ];
 
   static const _travelKeywords = [
@@ -301,6 +307,8 @@ class CalendarService {
     'route', 'autoroute', 'covoiturage',
     'voyage', 'aller-retour', 'transfert',
   ];
+
+  
 
   // ─── HELPERS POUR L'IRM CALCULATOR ──────────────────────
 

@@ -63,7 +63,14 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
     _emotionsFuture = SupabaseService.getEmotions();
     _profileFuture = SupabaseService.getProfile();
     _loadEmotionAnalysis();
+    _checkTodayCheckin();
     _loadIRM();
+    
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _checkTodayCheckin();
   }
 
@@ -745,13 +752,15 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Énergie Mentale',
-                            style: TextStyle(color: Color(0xFF1A1A2E), fontSize: 14, fontWeight: FontWeight.w600),
+                          Expanded(
+                            child: Text(
+                              'Énergie Mentale',
+                              style: TextStyle(color: Color(0xFF1A1A2E), fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
                           ),
                           Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               GestureDetector(
                                 onTap: _loadIRM,
@@ -760,7 +769,21 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                               SizedBox(width: 8),
                               GestureDetector(
                                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IrmHistoryPage())),
-                                child: Icon(Icons.timeline, color: Colors.grey.shade500, size: 18),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.timeline, color: AppColors.primary, size: 16),
+                                      SizedBox(width: 4),
+                                      Text('Historique', style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -788,7 +811,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
             ),
 
             // Saisie sommeil si pas de Health
-            if (!hasSleepData && _estimatedSleepHours == null) ...[
+            if (!_hasSleepData && _estimatedSleepHours == null) ...[
               SizedBox(height: 8),
               Container(
                 width: double.infinity,

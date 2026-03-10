@@ -118,37 +118,64 @@ class IrmCalculatorV2 {
   }
 
   // ─── ACTIVITÉ (20 pts) ──────────────────────────────────
+  //
+  // Pondération horaire : on compare les pas au prorata de la journée
+  // 6h = 0%, 12h = 50%, 18h = 85%, 22h = 100%
+  // ──────────────────────────────────────────────────────────
 
   static IrmFactorBreakdown _calculateActivity(
     UserProfileDynamic profile,
     int steps,
     List<String> sources,
   ) {
-    final ratio = profile.baselineSteps > 0
-        ? steps / profile.baselineSteps
-        : steps / 8000.0;
+    final now = DateTime.now();
+    final hour = now.hour + (now.minute / 60.0);
+
+    // Prorata de la journée active (6h-22h)
+    double dayProgress;
+    if (hour <= 6) {
+      dayProgress = 0.0;
+    } else if (hour >= 22) {
+      dayProgress = 1.0;
+    } else {
+      dayProgress = (hour - 6) / 16.0; // 16h de journée active
+    }
+
+    final baseline = profile.baselineSteps > 0 ? profile.baselineSteps : 8000;
+    final expectedNow = baseline * dayProgress;
+
+    // Ratio par rapport à ce qu'on attend à cette heure
+    final ratio = expectedNow > 0 ? steps / expectedNow : (steps > 0 ? 1.5 : 0.0);
 
     int points;
     String explication;
     String? impact;
     String? conseil;
 
-    if (ratio >= 1.2) {
+    final hourLabel = '${hour.floor()}h${(now.minute).toString().padLeft(2, '0')}';
+    final expectedLabel = expectedNow.round().toString();
+
+    if (dayProgress < 0.15) {
+      // Avant ~8h30 : trop tôt pour juger
+      points = 15;
+      explication = '$steps pas — début de journée, trop tôt pour évaluer';
+      impact = 'neutre';
+    } else if (ratio >= 1.2) {
       points = 20;
-      explication = '$steps pas — au-dessus de ta moyenne !';
+      explication = '$steps pas à $hourLabel — au-dessus du rythme !';
       impact = 'positif';
     } else if (ratio >= 0.8) {
       points = 15;
-      explication = '$steps pas — dans ta zone habituelle';
+      explication = '$steps pas à $hourLabel — bon rythme (~$expectedLabel attendus)';
       impact = 'neutre';
     } else if (ratio >= 0.5) {
       points = 10;
-      explication = '$steps pas — en dessous de ta moyenne';
+      explication = '$steps pas à $hourLabel — en dessous du rythme (~$expectedLabel attendus)';
       impact = 'négatif';
       conseil = 'Une marche de 15 min pourrait booster ton énergie';
     } else {
       points = 5;
-      explication = '$steps pas — journée très sédentaire';
+      explication = '$steps pas à $hourLabel — journée très sédentaire (~$expectedLabel attendus)';
       impact = 'négatif';
       conseil = 'Même 10 minutes de mouvement feront la différence';
     }
@@ -215,22 +242,22 @@ class IrmCalculatorV2 {
       points = 30;
       explication = 'Que des activités de récupération — excellent';
       impact = 'positif';
-    } else if (weightedImpact <= 3) {
+    } else if (weightedImpact <= 4) {
       points = 25;
       explication = '${_desc()} — charge légère';
       impact = 'neutre';
-    } else if (weightedImpact <= 6) {
+    } else if (weightedImpact <= 8) {
       points = 20;
       explication = '${_desc()} — charge modérée';
       impact = 'neutre';
-    } else if (weightedImpact <= 10) {
+    } else if (weightedImpact <= 14) {
       points = 12;
       explication = '${_desc()} — charge élevée';
       impact = 'négatif';
       conseil = positiveEvents > 0
           ? 'Journée dense mais $positiveEvents activité(s) de récupération prévue(s)'
           : 'Journée dense — préserve ta pause déjeuner';
-    } else if (weightedImpact <= 15) {
+    } else if (weightedImpact <= 20) {
       points = 8;
       explication = '${_desc()} — charge très élevée';
       impact = 'négatif';

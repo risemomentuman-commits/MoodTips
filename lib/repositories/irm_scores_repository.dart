@@ -17,7 +17,10 @@ class IrmScoresRepository {
     data['date'] = DateTime.now().toIso8601String().substring(0, 10);
     data['triggered_by'] = triggeredBy;
     data['timestamp'] = DateTime.now().toIso8601String();
-    await _client.from('irm_scores_timeline').insert(data);
+    await _client.from('irm_scores_timeline').upsert(
+      data,
+      onConflict: 'user_id,date',
+    );
   }
 
   Future<IrmScoreDetailed?> getLatestScore(String userId) async {
@@ -49,7 +52,7 @@ class IrmScoresRepository {
         .select()
         .eq('user_id', userId)
         .eq('date', dateStr)
-        .order('timestamp', ascending: true);
+        .order('timestamp', ascending: false);
     return (response as List)
         .map((e) => IrmScoreDetailed.fromJson(e))
         .toList();
@@ -68,7 +71,7 @@ class IrmScoresRepository {
         .eq('user_id', userId)
         .gte('date', startStr)
         .lte('date', endStr)
-        .order('timestamp', ascending: true);
+        .order('timestamp', ascending: false);
     return (response as List)
         .map((e) => IrmScoreDetailed.fromJson(e))
         .toList();

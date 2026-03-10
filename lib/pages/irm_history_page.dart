@@ -209,9 +209,10 @@ class _IrmHistoryPageState extends State<IrmHistoryPage> {
   }
 
   Widget _buildChart() {
+    final chronological = _scores.reversed.toList();
     final spots = <FlSpot>[];
-    for (var i = 0; i < _scores.length; i++) {
-      spots.add(FlSpot(i.toDouble(), _scores[i].score.toDouble()));
+    for (var i = 0; i < chronological.length; i++) {
+      spots.add(FlSpot(i.toDouble(), chronological[i].score.toDouble()));
     }
 
     return LineChart(

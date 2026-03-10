@@ -72,8 +72,11 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
       final existing = await scoresRepo.getLatestScore(userId);
       print('🔍 Dashboard IRM - score trouvé: ${existing?.score}');
 
+      final history = await _fetchIrmHistory(userId);
+
       setState(() {
         _irmScore = existing;
+        _irmHistory = history;
         _irmLoading = false;
       });
     } catch (e) {
