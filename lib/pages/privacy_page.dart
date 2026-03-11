@@ -53,15 +53,41 @@ class PrivacyPage extends StatelessWidget {
 
     if (confirmed == true) {
       try {
-        await Supabase.instance.client.auth.signOut();
+        // Afficher le chargement
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Colors.white),
+                SizedBox(height: 16),
+                Text('Suppression en cours...', style: TextStyle(color: Colors.white, fontSize: 16, decoration: TextDecoration.none)),
+              ],
+            ),
+          ),
+        );
+
+        // Appeler la fonction de suppression cascade
+        await Supabase.instance.client.rpc('delete_user_account');
+
         if (context.mounted) {
+          Navigator.pop(context); // Fermer le loader
           Navigator.pushNamedAndRemoveUntil(
               context, AppRoutes.auth, (route) => false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ton compte a été supprimé. À bientôt 💚'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
       } catch (e) {
         if (context.mounted) {
+          Navigator.pop(context); // Fermer le loader
           ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Erreur: ${e.toString()}')));
+              SnackBar(content: Text('Erreur: ${e.toString()}'), backgroundColor: AppColors.error));
         }
       }
     }
