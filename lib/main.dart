@@ -46,8 +46,11 @@ void main() async {
   
   // ✅ Initialiser les notifications
   if (!kIsWeb) {
-    await NotificationService.initialize();
-   
+    try {
+      await NotificationService.initialize();
+    } catch (e) {
+      print('⚠️ Notifications init failed: $e');
+    }
   }
 
   if (!kIsWeb) await GoogleTTSService.initialize();

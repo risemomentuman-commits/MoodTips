@@ -16,7 +16,6 @@ class NotificationService {
     if (kIsWeb) return;
     tz.initializeTimeZones();
     
-    // ✅ Forcer le fuseau horaire Europe/Paris
     final paris = tz.getLocation('Europe/Paris');
     tz.setLocalLocation(paris);
 
@@ -32,13 +31,17 @@ class NotificationService {
       defaultPresentList: true,
     );
 
-    await _notifications.initialize(
-      InitializationSettings(android: androidSettings, iOS: iosSettings),
-      onDidReceiveNotificationResponse: (response) {
-        navigatorKey?.currentState?.pushNamed('/moodCheck');
-      },
-    );
-    print('✅ NotificationService initialisé');
+    try {
+      await _notifications.initialize(
+        InitializationSettings(android: androidSettings, iOS: iosSettings),
+        onDidReceiveNotificationResponse: (response) {
+          navigatorKey?.currentState?.pushNamed('/moodCheck');
+        },
+      );
+      print('✅ NotificationService initialisé');
+    } catch (e) {
+      print('⚠️ NotificationService init failed: $e');
+    }
   }
 
   /// Notification contextuelle : 3j sans check-in ou IRM rouge 2j de suite
