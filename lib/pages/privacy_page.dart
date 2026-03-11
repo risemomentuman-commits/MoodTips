@@ -3,6 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_routes.dart';
 import '../widgets/irm_consent_toggle.dart';
+import 'dart:convert';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 class PrivacyPage extends StatelessWidget {
   Future<void> _showDeleteAccountDialog(BuildContext context) async {
@@ -64,12 +68,86 @@ class PrivacyPage extends StatelessWidget {
   }
 
   Future<void> _exportData(BuildContext context) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Export des données bientôt disponible \uD83D\uDCCA'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    try {
+      // Afficher le chargement
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) {
+        Navigator.pop(context);
+        return;
+      }
+
+      // Récupérer toutes les données utilisateur
+      final profile = await client.from('profiles').select().eq('id', userId).maybeSingle();
+      final profileDynamic = await client.from('user_profiles_dynamic').select().eq('user_id', userId).maybeSingle();
+      final moodLogs = await client.from('mood_logs').select('*, emotions(name)').eq('user_id', userId).order('created_at', ascending: false);
+      // mood_contexts lié via mood_logs
+      final moodLogIds = (moodLogs as List).map((m) => m['id']).toList();
+      List moodContexts = [];
+      if (moodLogIds.isNotEmpty) {
+        moodContexts = await client.from('mood_contexts').select().inFilter('mood_log_id', moodLogIds);
+      }
+      final tipsSessions = await client.from('tips_sessions').select('*, tips(title, category)').eq('user_id', userId);
+      final irmScores = await client.from('irm_scores_timeline').select().eq('user_id', userId).order('timestamp', ascending: false);
+      final dailyHealth = await client.from('daily_health_data').select().eq('user_id', userId).order('date', ascending: false);
+      final dataSources = await client.from('user_data_sources').select().eq('user_id', userId);
+
+      // Construire le JSON
+      final exportData = {
+        'export_date': DateTime.now().toIso8601String(),
+        'export_version': '1.0',
+        'user_id': userId,
+        'profile': profile,
+        'profile_dynamic': profileDynamic,
+        'mood_logs': moodLogs,
+        'mood_contexts': moodContexts,
+        'tips_sessions': tipsSessions,
+        'irm_scores': irmScores,
+        'daily_health_data': dailyHealth,
+        'data_sources': dataSources,
+        'metadata': {
+          'tables_exported': 8,
+          'mood_logs_count': (moodLogs as List).length,
+          'irm_scores_count': (irmScores as List).length,
+          'daily_health_count': (dailyHealth as List).length,
+          'tips_sessions_count': (tipsSessions as List).length,
+        },
+      };
+
+      // Sauvegarder en fichier
+      final dir = await getTemporaryDirectory();
+      final date = DateTime.now().toIso8601String().substring(0, 10);
+      final file = File('${dir.path}/moodtips_export_$date.json');
+      await file.writeAsString(
+        const JsonEncoder.withIndent('  ').convert(exportData),
+      );
+
+      // Fermer le chargement
+      if (context.mounted) Navigator.pop(context);
+
+      // Partager
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'MoodTips - Export de mes données ($date)',
+        text: 'Voici l\'export complet de mes données MoodTips (droit de portabilité RGPD Art. 20)',
+      );
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de l\'export : $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildSection({
