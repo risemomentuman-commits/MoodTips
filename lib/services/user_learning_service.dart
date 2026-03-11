@@ -16,7 +16,7 @@ class UserLearningService {
 
     final response = await _client
         .from('daily_health_data')
-        .select('sleep_duration_hours, steps, total_events')
+        .select('sleep_duration_hours, steps_total, total_events')
         .eq('user_id', userId)
         .gte('date', sevenDaysAgo.toIso8601String().substring(0, 10))
         .lte('date', now.toIso8601String().substring(0, 10));
@@ -30,7 +30,7 @@ class UserLearningService {
 
     for (final row in data) {
       totalSleep += (row['sleep_duration_hours'] as num?)?.toDouble() ?? 0;
-      totalSteps += (row['steps'] as num?)?.toInt() ?? 0;
+      totalSteps += (row['steps_total'] as num?)?.toInt() ?? 0;
       totalLoad += (row['total_events'] as num?)?.toDouble() ?? 0;
     }
 
@@ -109,25 +109,6 @@ class UserLearningService {
 
     final emotions = <String>[];
 
-    // 1. Lire depuis mood_logs (check-ins)
-    try {
-      final moodLogs = await _client
-          .from('mood_logs')
-          .select('emotion_id')
-          .eq('user_id', userId)
-          .gte('created_at', sevenDaysAgo.toIso8601String())
-          .order('created_at', ascending: false);
-
-      for (final row in moodLogs as List) {
-        if (row['emotion'] != null) {
-          emotions.add(row['emotion'] as String);
-        }
-      }
-    } catch (e) {
-      print('⚠️ Erreur lecture mood_logs: $e');
-    }
-
-    // 2. Compléter avec daily_health_data si disponible
     try {
       final moodLogs = await _client
           .from('mood_logs')
@@ -137,17 +118,17 @@ class UserLearningService {
           .order('created_at', ascending: false);
 
       for (final row in moodLogs as List) {
-        final name = row['emotions']?['name'];
-        if (name != null) {
-          emotions.add(name as String);
+        if (row['emotions'] != null && row['emotions']['name'] != null) {
+          emotions.add(row['emotions']['name'] as String);
         }
       }
     } catch (e) {
-      print('⚠️ Erreur lecture mood_logs: $e');
+      print('⚠️ Erreur lecture émotions mood_logs: $e');
     }
 
     return emotions;
   }
+
 
   /// Récupère les données santé du jour
   Future<Map<String, dynamic>?> getTodayHealthData(String userId) async {

@@ -104,6 +104,8 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
           .gte('created_at', '${today}T00:00:00')
           .limit(1)
           .maybeSingle();
+
+      print('🔍 CheckIn today: response=$response, mounted=$mounted');
       
       setState(() {
         _hasCheckedInToday = response != null;
@@ -214,6 +216,8 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
         workEvents: workEvents,
         positiveEvents: positiveEvents,
       );
+      // Mettre à jour le profil adaptatif (après 7 jours de données)
+      await learning.updateBaseline(userId);
 
       setState(() {
         _irmScore = score;
@@ -552,7 +556,36 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                           emotions: snapshot.data!,
                           onEmotionSelected: (emotion) async {
                             HapticFeedback.mediumImpact();
-                            final moodLog = await SupabaseService.createMoodLog(emotionId: emotion.id);
+                            // Vérifier si un mood_log existe déjà aujourd'hui
+                            final today = DateTime.now().toIso8601String().substring(0, 10);
+                            final existing = await Supabase.instance.client
+                                .from('mood_logs')
+                                .select('id')
+                                .eq('user_id', Supabase.instance.client.auth.currentUser!.id)
+                                .gte('created_at', '${today}T00:00:00')
+                                .limit(1)
+                                .maybeSingle();
+
+                            if (existing != null) {
+                              // Mettre à jour l'émotion du check-in existant
+                              await Supabase.instance.client
+                                  .from('mood_logs')
+                                  .update({'emotion_id': emotion.id})
+                                  .eq('id', existing['id']);
+                            }
+
+                            final moodLog = existing != null
+                                ? null
+                                : await SupabaseService.createMoodLog(emotionId: emotion.id);
+
+                            final moodLogId = existing?['id'] ?? moodLog?.id;
+                            if (moodLogId == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Erreur lors de l\'enregistrement'), backgroundColor: AppColors.error),
+                              );
+                              return;
+                            }
+                            DashboardCache.clear();
                             DashboardCache.clear();
                             if (moodLog == null) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -566,10 +599,11 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                             setState(() => _hasCheckedInToday = true);
                             
                             await BadgeChecker.checkAndShowBadges(context);
-                            Navigator.pushNamed(context, AppRoutes.context, arguments: {
+                            await Navigator.pushNamed(context, AppRoutes.context, arguments: {
                               'emotionId': emotion.id,
-                              'moodLogId': moodLog.id,
+                              'moodLogId': moodLogId,
                             });
+                            _checkTodayCheckin();
                           },
                           isIntelligentMode: false,
                         );
@@ -955,7 +989,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                     },
                     icon: Icon(Icons.search, size: 22),
                     label: Text(
-                      'Analyser mon état maintenant',
+                      'Check-in',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                     ),
                     style: ElevatedButton.styleFrom(
