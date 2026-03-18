@@ -19,6 +19,7 @@ import '../pages/irm_detail_page.dart';
 import '../pages/irm_history_page.dart';
 import '../services/calendar_service.dart';
 import '../widgets/battery_widget.dart';
+import '../widgets/premium_gate.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -199,7 +200,22 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
                       _buildHeader(),
 
                       // Score IRM principal
-                      _buildIrmCard(),
+                      PremiumGate(
+                        featureName: 'Score IRM',
+                        child: _buildIrmCard(),
+                      ),
+
+                      // Courbe 7 jours
+                      if (_irmHistory.length >= 2)
+                        PremiumGate(
+                          child: _buildTrendChart(),
+                        ),
+
+                      // 4 facteurs rapides
+                      if (_irmScore != null)
+                        PremiumGate(
+                          child: _buildFactorsRow(),
+                        ),
 
                       // Courbe 7 jours
                       if (_irmHistory.length >= 2) _buildTrendChart(),

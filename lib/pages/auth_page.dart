@@ -4,6 +4,7 @@ import '../utils/app_colors.dart';
 import '../utils/app_routes.dart';
 import '../services/consent_service.dart';
 import 'forgot_password_page.dart';
+import '../services/subscription_service.dart';
 
 class AuthPage extends StatefulWidget {
   final String? message;
@@ -62,6 +63,12 @@ class _AuthPageState extends State<AuthPage> {
       );
 
       if (!mounted) return;
+
+      // Login RevenueCat
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        await SubscriptionService.login(user.id);
+      }
 
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId != null) {

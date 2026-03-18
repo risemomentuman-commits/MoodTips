@@ -22,7 +22,8 @@ import 'pages/reset_password_page.dart';
 import '../services/consent_service.dart';
 import '../pages/consent_page.dart';
 import 'package:audio_service/audio_service.dart';
-import 'package:just_audio_background/just_audio_background.dart'; // ← ajoute en haut
+import 'package:just_audio_background/just_audio_background.dart'; 
+import 'services/subscription_service.dart';
 
 
 
@@ -40,6 +41,8 @@ void main() async {
   if (kIsWeb) {
    
   }
+
+  
 
  
   AudioPreloader.preloadAudio();
@@ -68,6 +71,13 @@ void main() async {
   }
 
   await AppColors.loadTheme();
+
+  await SubscriptionService.initialize();
+  // Login RevenueCat avec le user Supabase
+  final userId = Supabase.instance.client.auth.currentUser?.id;
+  if (userId != null) {
+    await SubscriptionService.login(userId);
+  }
 
   _preloadDashboardData();
   

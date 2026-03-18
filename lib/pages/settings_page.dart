@@ -7,6 +7,7 @@ import 'connections_settings_page.dart';
 import '../services/google_tts_service.dart';
 import 'notifications_Settings_page.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../services/subscription_service.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -39,6 +40,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
     if (confirm == true) {
       try {
+        await SubscriptionService.logout();
         await SupabaseService.signOut();
         if (!context.mounted) return;
         Navigator.pushNamedAndRemoveUntil(context, AppRoutes.auth, (route) => false);

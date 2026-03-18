@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_routes.dart';
+import '../services/subscription_service.dart';
 
 class CreateAccountPage extends StatefulWidget {
   const CreateAccountPage({Key? key}) : super(key: key);
@@ -52,6 +53,12 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       );
 
       if (!mounted) return;
+
+      // Login RevenueCat
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        await SubscriptionService.login(user.id);
+      }
 
       if (response.user != null) {
         // Afficher dialog de succès avec instructions

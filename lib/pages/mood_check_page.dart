@@ -24,6 +24,10 @@ import '../models/user_profile_dynamic.dart';
 import '../services/health_service.dart';
 import '../widgets/battery_widget.dart';
 import '../services/calendar_service.dart';
+import 'dart:io' show Platform;
+import '../pages/connections_settings_page.dart';
+import '../widgets/premium_gate.dart';
+import '../widgets/trial_banner.dart';
 
 class MoodCheckPage extends StatefulWidget {
    const MoodCheckPage({Key? key}) : super(key: key); // ✅ Accepte maintenant une clé
@@ -53,6 +57,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
   bool _showAlert = true;
   bool _hasCheckedInToday = false;
   bool _showCheckinExplainer = true;
+  bool _hasShownConnectionReminder = false;
   bool get hasSleepData {
     return _estimatedSleepHours != null && _estimatedSleepHours! > 0;
   }
@@ -65,6 +70,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
     _loadEmotionAnalysis();
     _checkTodayCheckin();
     _loadIRM();
+    _checkConnectionsReminder();
     
   }
 
@@ -88,6 +94,130 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
       setState(() {
         _emotionAnalysisFuture = EmotionAnalysisService.analyzeRecentEmotions();
       });
+    }
+  }
+
+  Future<void> _checkConnectionsReminder() async {
+    // Ne montrer qu'une fois par session
+    if (_hasShownConnectionReminder) return;
+
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final response = await Supabase.instance.client
+          .from('user_data_sources')
+          .select('source_type, is_active')
+          .eq('user_id', userId);
+
+      final sources = response as List;
+      final hasHealth = sources.any((s) =>
+          (s['source_type'] == 'apple_health' || s['source_type'] == 'google_fit') &&
+          s['is_active'] == true);
+      final hasCalendar = sources.any((s) =>
+          s['source_type'] == 'calendar' && s['is_active'] == true);
+
+      if (hasHealth && hasCalendar) return;
+
+      _hasShownConnectionReminder = true;
+
+      // Attendre que la page soit construite
+      await Future.delayed(Duration(seconds: 2));
+      if (!mounted) return;
+
+      final missingItems = <Map<String, dynamic>>[];
+      if (!hasHealth) {
+        missingItems.add({
+          'icon': Icons.favorite,
+          'color': Colors.red,
+          'title': Platform.isIOS ? 'Apple Health' : 'Health Connect',
+          'desc': 'Permet de suivre ton sommeil et ton activité physique automatiquement. Sans ça, MoodTips ne peut pas évaluer précisément ton énergie.',
+        });
+      }
+      if (!hasCalendar) {
+        missingItems.add({
+          'icon': Icons.calendar_today,
+          'color': Colors.orange,
+          'title': 'Calendrier',
+          'desc': 'Permet de détecter ta charge mentale (réunions, événements). Sans ça, MoodTips estime ta charge par défaut.',
+        });
+      }
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Icons.psychology, color: AppColors.primary, size: 28),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Améliore la précision',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Connecte tes données pour un score IRM plus fiable et des conseils ultra-personnalisés.',
+                style: TextStyle(fontSize: 13, color: AppColors.textMedium, height: 1.4),
+              ),
+              SizedBox(height: 16),
+              ...missingItems.map((item) => Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (item['color'] as Color).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(item['icon'] as IconData, color: item['color'] as Color, size: 20),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item['title'] as String, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          SizedBox(height: 2),
+                          Text(item['desc'] as String, style: TextStyle(fontSize: 12, color: AppColors.textMedium, height: 1.3)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Plus tard', style: TextStyle(color: AppColors.textMedium)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ConnectionsSettingsPage()));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text('Connecter', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      print('⚠️ Erreur vérification connexions: $e');
     }
   }
 
@@ -378,9 +508,15 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                     ),
                   ),
 
+                  // Bandeaux (toujours visibles)
+                  _buildCheckinBanner(),
+                  TrialBanner(),
+
                   // 🧠 IRM WIDGET
-                  _buildIRMWidget(),
-                  SizedBox(height: 8),
+                  PremiumGate(
+                    featureName: 'Score IRM',
+                    child: _buildIRMWidget(),
+                  ),
 
                   
 
@@ -535,7 +671,10 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   SizedBox(height: 8),
 
                   if (_isExpressMode)
-                    _buildIntelligentWidget()
+                    PremiumGate(
+                      featureName: 'Mode Intelligent',
+                      child: _buildIntelligentWidget(),
+                    )
                   else ...[
                     Text(
                       'Fais tourner la roue et sélectionne',
@@ -768,7 +907,6 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
         ),
         child: Column(
           children: [
-            _buildCheckinBanner(),
             // Header + Batterie sur la même ligne
             Row(
               children: [
