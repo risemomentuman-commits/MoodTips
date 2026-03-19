@@ -15,7 +15,7 @@ class SubscriptionService {
   static int _trialDaysRemaining = 0;
   static bool _trialExpired = false;
   // Mode beta : désactiver le gating pour les testeurs
-  static const bool _betaMode = true; // ← Mettre à false avant le lancement public
+  static const bool _betaMode = false; // ← Mettre à false avant le lancement public
 
   static bool get isPremium => _isPremium;
   static int get trialDaysRemaining => _trialDaysRemaining;
