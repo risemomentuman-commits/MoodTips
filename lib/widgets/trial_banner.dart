@@ -4,8 +4,30 @@ import '../pages/paywall_page.dart';
 import '../utils/app_colors.dart';
 
 /// Bandeau qui s'affiche quand le trial approche de la fin
-class TrialBanner extends StatelessWidget {
+class TrialBanner extends StatefulWidget {
   const TrialBanner({Key? key}) : super(key: key);
+
+  @override
+  State<TrialBanner> createState() => _TrialBannerState();
+}
+
+class _TrialBannerState extends State<TrialBanner> {
+
+  @override
+  void initState() {
+    super.initState();
+    SubscriptionService.accessNotifier.addListener(_refresh);
+  }
+
+  @override
+  void dispose() {
+    SubscriptionService.accessNotifier.removeListener(_refresh);
+    super.dispose();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +128,7 @@ class TrialBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Ton essai gratuit est termine',
+                      'Ton essai gratuit est terminé',
                       style: TextStyle(
                         color: AppColors.textDark,
                         fontWeight: FontWeight.bold,

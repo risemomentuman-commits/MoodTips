@@ -28,6 +28,7 @@ import 'dart:io' show Platform;
 import '../pages/connections_settings_page.dart';
 import '../widgets/premium_gate.dart';
 import '../widgets/trial_banner.dart';
+import '../services/subscription_service.dart';
 
 class MoodCheckPage extends StatefulWidget {
    const MoodCheckPage({Key? key}) : super(key: key); // ✅ Accepte maintenant une clé
@@ -65,6 +66,11 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
   @override
   void initState() {
     super.initState();
+    SubscriptionService.checkPremiumStatus().then((_) {
+      SubscriptionService.refreshTrialStatus().then((_) {
+        if (mounted) setState(() {});
+      });
+    });
     _emotionsFuture = SupabaseService.getEmotions();
     _profileFuture = SupabaseService.getProfile();
     _loadEmotionAnalysis();
@@ -514,7 +520,9 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
 
                   // 🧠 IRM WIDGET
                   PremiumGate(
+                    key: ValueKey('irm_${SubscriptionService.hasAccess}'),
                     featureName: 'Score IRM',
+                    onPurchased: () => setState(() {}),
                     child: _buildIRMWidget(),
                   ),
 
@@ -672,7 +680,9 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
 
                   if (_isExpressMode)
                     PremiumGate(
+                      key: ValueKey('intelligent_${SubscriptionService.hasAccess}'),
                       featureName: 'Mode Intelligent',
+                      onPurchased: () => setState(() {}),
                       child: _buildIntelligentWidget(),
                     )
                   else ...[
@@ -717,7 +727,9 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                                 ? null
                                 : await SupabaseService.createMoodLog(emotionId: emotion.id);
 
-                            final moodLogId = existing?['id'] ?? moodLog?.id;
+                            final rawId = existing?['id'] ?? moodLog?.id;
+                            final moodLogId = rawId is int ? rawId : int.tryParse(rawId.toString());
+                            print('🔍 moodLogId: $moodLogId (raw: $rawId, type: ${rawId.runtimeType})');
                             if (moodLogId == null) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Erreur lors de l\'enregistrement'), backgroundColor: AppColors.error),
@@ -725,13 +737,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                               return;
                             }
                             DashboardCache.clear();
-                            DashboardCache.clear();
-                            if (moodLog == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Erreur lors de l\'enregistrement'), backgroundColor: AppColors.error),
-                              );
-                              return;
-                            }
+                            
                             
                             // ✅ Recalculer IRM avec l'émotion fraîchement enregistrée
                             await _loadIRM();
@@ -743,6 +749,10 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                               'moodLogId': moodLogId,
                             });
                             _checkTodayCheckin();
+                            // Rafraîchir le statut premium au retour
+                            await SubscriptionService.checkPremiumStatus();
+                            await SubscriptionService.refreshTrialStatus();
+                            if (mounted) setState(() {});
                           },
                           isIntelligentMode: false,
                         );
@@ -836,7 +846,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
             if (!_hasCheckedInToday && _showCheckinExplainer) ...[
               SizedBox(height: 8),
               Text(
-                'Plus tu fais ton check-in régulièrement, plus MoodTips apprend à te connaître et personnalise tes conseils.',
+                'Plus tu fais ton check-in régulièrement, plus MoodTips apprend à te connaître et personnalise tes conseils-> Mode Standard',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textMedium,

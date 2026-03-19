@@ -216,14 +216,14 @@ class SupabaseService {
     required String activity,
   }) async {
     try {
-      await _client.from('mood_contexts').insert({
+      await _client.from('mood_contexts').upsert({
         'mood_log_id': moodLogId,
         'location': location,
         'company': company,
         'time_of_day': timeOfDay,
         'activity': activity,
         'created_at': DateTime.now().toIso8601String(),
-      });
+      }, onConflict: 'mood_log_id');
     } catch (e) {
       print('Erreur saveMoodContext: $e');
       rethrow;

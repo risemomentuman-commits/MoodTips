@@ -148,19 +148,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
 
-                // ── CONTENU ──
-                _buildSectionTitle('Contenu'),
-                _buildSettingCard(
-                  context: context,
-                  icon: Icons.lightbulb_outline,
-                  iconColor: Colors.amber,
-                  title: 'Tous les tips',
-                  subtitle: 'Parcourir tous les conseils',
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.tipsList),
-                ),
-
-                SizedBox(height: 24),
-
                 // ── VOIX GUIDÉE ──
                 _buildSectionTitle('Voix guidée'),
                 Container(

@@ -73,6 +73,7 @@ void main() async {
   await AppColors.loadTheme();
 
   await SubscriptionService.initialize();
+  
   // Login RevenueCat avec le user Supabase
   final userId = Supabase.instance.client.auth.currentUser?.id;
   if (userId != null) {

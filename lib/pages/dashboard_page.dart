@@ -20,6 +20,7 @@ import '../pages/irm_history_page.dart';
 import '../services/calendar_service.dart';
 import '../widgets/battery_widget.dart';
 import '../widgets/premium_gate.dart';
+import '../services/subscription_service.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -41,6 +42,11 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    SubscriptionService.checkPremiumStatus().then((_) {
+      SubscriptionService.refreshTrialStatus().then((_) {
+        if (mounted) setState(() {});
+      });
+    });
     _loadAllData();
     _loadIrmScore();
   }

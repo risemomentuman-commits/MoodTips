@@ -21,6 +21,7 @@ class SubscriptionService {
 
   /// L'utilisateur a acces aux features premium
   static bool get hasAccess => _isPremium || !_trialExpired;
+  static final ValueNotifier<bool> accessNotifier = ValueNotifier(false);
 
   /// Initialiser RevenueCat
   static Future<void> initialize() async {
@@ -95,6 +96,7 @@ class SubscriptionService {
       _trialExpired = false;
       _trialDaysRemaining = 14;
     }
+    accessNotifier.value = hasAccess;
   }
 
   /// Rafraichir le statut trial (appeler periodiquement)
@@ -146,6 +148,7 @@ class SubscriptionService {
 
   static void _updatePremiumStatus(CustomerInfo info) {
     _isPremium = info.entitlements.active.containsKey(_entitlementId);
+    accessNotifier.value = hasAccess;
     print('💎 Premium: $_isPremium');
   }
 

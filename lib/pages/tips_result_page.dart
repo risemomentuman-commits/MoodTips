@@ -3,6 +3,8 @@ import '../services/supabase_service.dart';
 import '../models/tip.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_routes.dart';
+import '../widgets/premium_gate.dart';
+import '../services/subscription_service.dart';
 
 class TipsResultPage extends StatefulWidget {
   final int emotionId;
@@ -203,24 +205,37 @@ class _TipsResultPageState extends State<TipsResultPage> {
                           return _buildTopTipCard(tip, index + 1);
                         }).toList(),
 
-                        // Bouton "Voir plus" si il y a d'autres tips
+                        // Bouton "Voir plus" premium
                         if (moreTips.isNotEmpty && !_showAllTips) ...[
                           SizedBox(height: 16),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                _showAllTips = true;
-                              });
-                            },
-                            icon: Icon(Icons.expand_more),
-                            label: Text('Voir ${moreTips.length} autre${moreTips.length > 1 ? 's' : ''} tip${moreTips.length > 1 ? 's' : ''}'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                              side: BorderSide(color: AppColors.primary, width: 2),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                          PremiumGate(
+                            featureName: 'Tips Premium',
+                            blurAmount: 0,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _showAllTips = true;
+                                });
+                              },
+                              icon: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.expand_more),
+                                  if (!SubscriptionService.hasAccess) ...[
+                                    SizedBox(width: 4),
+                                    Icon(Icons.lock, size: 14, color: Colors.amber),
+                                  ],
+                                ],
                               ),
-                              padding: EdgeInsets.symmetric(vertical: 16),
+                              label: Text('Voir ${moreTips.length} tip${moreTips.length > 1 ? 's' : ''} Premium'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                side: BorderSide(color: AppColors.primary, width: 2),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                              ),
                             ),
                           ),
                         ],

@@ -141,7 +141,14 @@ class _PaywallPageState extends State<PaywallPage> {
                         child: ElevatedButton(
                           onPressed: _isPurchasing ? null : () {
                             final pkg = _selectedPlan == 'annual' ? _annualPackage : _monthlyPackage;
-                            if (pkg != null) _purchase(pkg);
+                            print('🛒 Selected: $_selectedPlan, pkg: $pkg, monthly: $_monthlyPackage, annual: $_annualPackage');
+                            if (pkg != null) {
+                              _purchase(pkg);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Offre non disponible'), backgroundColor: Colors.orange),
+                              );
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
