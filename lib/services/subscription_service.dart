@@ -6,7 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SubscriptionService {
   static const String _iosApiKey = 'appl_UXtDvyjTuWMjXbkEOUnjZoxcgkF';
-  static const String _androidApiKey = '';
+  static const String _androidApiKey = 'goog_dxKnYNGpRQFHIuPNLbQxHdcTcaF';
   static const String _entitlementId = 'premium';
   static const int _trialDays = 14;
 
@@ -14,13 +14,15 @@ class SubscriptionService {
   static bool _isPremium = false;
   static int _trialDaysRemaining = 0;
   static bool _trialExpired = false;
+  // Mode beta : désactiver le gating pour les testeurs
+  static const bool _betaMode = true; // ← Mettre à false avant le lancement public
 
   static bool get isPremium => _isPremium;
   static int get trialDaysRemaining => _trialDaysRemaining;
   static bool get trialExpired => _trialExpired;
 
   /// L'utilisateur a acces aux features premium
-  static bool get hasAccess => _isPremium || !_trialExpired;
+  static bool get hasAccess => _betaMode || _isPremium || !_trialExpired;
   static final ValueNotifier<bool> accessNotifier = ValueNotifier(false);
 
   /// Initialiser RevenueCat

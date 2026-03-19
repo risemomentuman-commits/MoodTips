@@ -626,8 +626,12 @@ class _ConsentPageState extends State<ConsentPage> {
 
       // 3. Permissions notifications
       if (_notificationsEnabled && !kIsWeb) {
-        await NotificationService.requestPermission();
-        await NotificationService.scheduleIRMNotifications();
+        try {
+          await NotificationService.requestPermission();
+          await NotificationService.scheduleIRMNotifications();
+        } catch (e) {
+          print('⚠️ Notifications setup failed: $e');
+        }
       }
 
       // 4. Sauvegarder les autres consentements dans profil

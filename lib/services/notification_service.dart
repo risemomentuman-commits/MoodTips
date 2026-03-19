@@ -185,7 +185,11 @@ class NotificationService {
   /// ✅ 2 notifications IRM par jour
   static Future<void> scheduleIRMNotifications() async {
     if (kIsWeb) return;
-    await _notifications.cancelAll();
+    try {
+      await _notifications.cancelAll();
+    } catch (e) {
+      print('⚠️ cancelAll failed: $e');
+    }
 
     await _scheduleDaily(
       id: 1,
@@ -249,34 +253,38 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
-    await _notifications.zonedSchedule(
-      id,
-      title,
-      body,
-      _nextInstance(hour, minute),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'irm_daily',
-          'Bilan IRM quotidien',
-          importance: Importance.high,
-          priority: Priority.high,
-          playSound: true,
-          enableVibration: false,
-          color: Color(0xFFE8875A),
+    try {
+      await _notifications.zonedSchedule(
+        id,
+        title,
+        body,
+        _nextInstance(hour, minute),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'irm_daily',
+            'Bilan IRM quotidien',
+            importance: Importance.high,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: false,
+            color: Color(0xFFE8875A),
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+            interruptionLevel: InterruptionLevel.active,
+          ),
         ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          interruptionLevel: InterruptionLevel.active,
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
-    print('🔔 Programmée: ${hour}h${minute.toString().padLeft(2, '0')}');
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+      print('🔔 Programmée: ${hour}h${minute.toString().padLeft(2, '0')}');
+    } catch (e) {
+      print('⚠️ Notification $id scheduling failed: $e');
+    }
   }
 
   static tz.TZDateTime _nextInstance(int hour, int minute) {
