@@ -11,7 +11,7 @@ import '../widgets/battery_widget.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/dashboard_cache.dart';
 import '../services/irm_calculator_v2.dart';
-import '../services/user_learning_service.dart';
+import '../services/user_learning_ml_service.dart';
 import '../services/health_service.dart';
 import '../repositories/irm_scores_repository.dart';
 import '../repositories/user_profile_repository.dart';
@@ -21,6 +21,9 @@ import '../services/calendar_service.dart';
 import '../widgets/battery_widget.dart';
 import '../widgets/premium_gate.dart';
 import '../services/subscription_service.dart';
+import '../services/dashboard_data_service.dart';
+import '../utils/app_animations.dart';
+import '../widgets/irm_battery_widget.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -107,44 +110,18 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
     }
   }
 
+  final _dataService = DashboardDataService();
+
   Future<void> _loadAllData() async {
-    if (DashboardCache.isValid) {
-      setState(() {
-        _profile = DashboardCache.profile;
-        _recentMoods = DashboardCache.recentMoods ?? [];
-        _contextInsights = DashboardCache.contextInsights;
-        _exerciseStats = DashboardCache.exerciseStats;
-        _isLoading = false;
-      });
-      return;
-    }
-
     setState(() => _isLoading = true);
-
     try {
-      final results = await Future.wait([
-        SupabaseService.getProfile(),
-        SupabaseService.getMoodLogs(limit: 7),
-        SupabaseService.getContextInsights(),
-        _fetchExerciseStats(),
-      ]);
-
-      DashboardCache.update(
-        newProfile: results[0] as UserProfile?,
-        newMoods: results[1] as List<MoodLog>,
-        newContexts: results[2] as Map<String, dynamic>?,
-        newStats: results[3] as Map<String, dynamic>?,
-      );
-
+      final snapshot = await _dataService.loadDashboardSnapshot();
       setState(() {
-        _profile = results[0] as UserProfile?;
-        _recentMoods = results[1] as List<MoodLog>;
-        _contextInsights = results[2] as Map<String, dynamic>?;
-        _exerciseStats = results[3] as Map<String, dynamic>?;
+        _profile    = snapshot.todayScore != null ? _profile : null;
+        _isLoading  = false;
       });
     } catch (e) {
-      print('❌ Erreur dashboard: $e');
-    } finally {
+      print('❌ Dashboard: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -223,11 +200,7 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
                           child: _buildFactorsRow(),
                         ),
 
-                      // Courbe 7 jours
-                      if (_irmHistory.length >= 2) _buildTrendChart(),
-
-                      // 4 facteurs rapides
-                      if (_irmScore != null) _buildFactorsRow(),
+                     
 
                       // Streak + Humeur
                       Padding(
@@ -366,8 +339,7 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
             child: Row(
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 36, height: 36,
                   decoration: BoxDecoration(color: Colors.grey.shade300, shape: BoxShape.circle),
                   child: Center(child: Text('--', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold))),
                 ),
@@ -406,24 +378,16 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
           ),
           child: Row(
             children: [
-              BatteryWidget(
-                percentage: score,
-                width: 50,
-                height: 28,
-              ),
+              BatteryWidget(percentage: score, width: 50, height: 28),
               SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '⚡ Énergie Mentale · $label',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textDark),
-                    ),
-                    Text(
-                      '$score/100 · IRM',
-                      style: TextStyle(fontSize: 11, color: AppColors.textMedium),
-                    ),
+                    Text('⚡ Énergie Mentale · $label',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+                    Text('$score/100 · IRM',
+                        style: TextStyle(fontSize: 11, color: AppColors.textMedium)),
                   ],
                 ),
               ),

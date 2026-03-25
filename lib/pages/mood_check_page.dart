@@ -29,6 +29,15 @@ import '../pages/connections_settings_page.dart';
 import '../widgets/premium_gate.dart';
 import '../widgets/trial_banner.dart';
 import '../services/subscription_service.dart';
+import '../utils/app_animations.dart';
+import '../widgets/irm_battery_widget.dart';
+import '../services/dashboard_data_service.dart';
+import '../widgets/prediction_card_evening.dart';
+import '../services/prediction_notification_service.dart';
+import '../services/pattern_detection_service.dart';
+import '../services/multi_factor_correlation_service.dart';
+import '../services/notification_contextual_service.dart';
+import 'dart:async';
 
 class MoodCheckPage extends StatefulWidget {
    const MoodCheckPage({Key? key}) : super(key: key); // ✅ Accepte maintenant une clé
@@ -77,6 +86,8 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
     _checkTodayCheckin();
     _loadIRM();
     _checkConnectionsReminder();
+    PredictionNotificationService().scheduleDailyPredictionNotif();
+    
     
   }
 
@@ -518,6 +529,8 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   _buildCheckinBanner(),
                   TrialBanner(),
 
+                  const PredictionCardEvening(),
+
                   // 🧠 IRM WIDGET
                   PremiumGate(
                     key: ValueKey('irm_${SubscriptionService.hasAccess}'),
@@ -737,11 +750,21 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                               return;
                             }
                             DashboardCache.clear();
+                            final dataService = DashboardDataService();
+                            await dataService.invalidateAfterCheckin();
                             
                             
                             // ✅ Recalculer IRM avec l'émotion fraîchement enregistrée
                             await _loadIRM();
                             setState(() => _hasCheckedInToday = true);
+                            unawaited(PredictionNotificationService().scheduleDailyPredictionNotif());
+                            unawaited(PatternDetectionService().analyzeAndSave());
+                            unawaited(MultiFactorCorrelationService().detectAndSaveRules());
+                            unawaited(NotificationContextualService().scheduleContextualAlerts(
+                              sleepHours:      _estimatedSleepHours ?? 7.0,
+                              morningEvents:   0,   // tu peux passer totalEvents / 2 comme estimation
+                              afternoonEvents: 0,   // idem
+                            ));
                             
                             await BadgeChecker.checkAndShowBadges(context);
                             await Navigator.pushNamed(context, AppRoutes.context, arguments: {
@@ -872,7 +895,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
         ),
         child: Row(
           children: [
-            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+            SizedBox(width: 16, height: 16, child: ShimmerBox.full(height: 80, borderRadius: 16)),
             SizedBox(width: 10),
             Text('Calcul IRM...', style: TextStyle(color: AppColors.textMedium, fontSize: 12)),
           ],
@@ -904,7 +927,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => IrmDetailPage(score: irm)),
+        SlideUpFadePageRoute(child: IrmDetailPage(score: irm)),
       ),
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -921,11 +944,10 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
             Row(
               children: [
                 // Batterie compacte à gauche
-                BatteryWidget(
-                  percentage: irm.score,
-                  isCharging: irm.score > 60,
-                  width: 100,
-                  height: 45,
+                IrmBatteryWidget(
+                  score: irm.score.toDouble(),
+                  size: 110,
+                  showTrend: false, // pas d'historique dispo ici directement
                 ),
                 SizedBox(width: 16),
                 // Infos à droite
@@ -950,7 +972,10 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                               ),
                               SizedBox(width: 8),
                               GestureDetector(
-                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IrmHistoryPage())),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  SlideUpFadePageRoute(child: IrmHistoryPage()),
+                                ),
                                 child: Container(
                                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
@@ -1127,28 +1152,49 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                 ),
                 SizedBox(height: 24),
 
-                // Bouton analyse
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      HapticFeedback.mediumImpact();
-                      Navigator.pushNamed(context, AppRoutes.intelligentMode);
-                    },
-                    icon: Icon(Icons.search, size: 22),
-                    label: Text(
-                      'Check-in',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                // Bouton check-in
+              
+                TapScaleButton(
+                  onTap: _hasCheckedInToday
+                      ? null
+                      : () {
+                          HapticFeedback.mediumImpact();
+                          Navigator.pushNamed(context, AppRoutes.intelligentMode);
+                        },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: _hasCheckedInToday
+                          ? Colors.grey.shade300
+                          : AppColors.primary,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: _hasCheckedInToday
+                          ? []
+                          : [BoxShadow(
+                              color: AppColors.primary.withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            )],
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 4,
-                      shadowColor: AppColors.primary.withOpacity(0.4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _hasCheckedInToday ? Icons.check_circle : Icons.search,
+                          color: _hasCheckedInToday ? Colors.grey.shade500 : Colors.white,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _hasCheckedInToday ? 'Check-in validé ✓' : 'Check-in',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: _hasCheckedInToday ? Colors.grey.shade500 : Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

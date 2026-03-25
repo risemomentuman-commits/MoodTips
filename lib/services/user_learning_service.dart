@@ -13,7 +13,6 @@ class UserLearningService {
   Future<void> updateBaseline(String userId) async {
     final now = DateTime.now();
     final sevenDaysAgo = now.subtract(const Duration(days: 7));
-
     final response = await _client
         .from('daily_health_data')
         .select('sleep_duration_hours, steps_total, total_events')
@@ -35,7 +34,6 @@ class UserLearningService {
     }
 
     final count = data.length;
-
     await _profileRepo.updateBaseline(
       userId: userId,
       avgSleep: totalSleep / count,
@@ -106,7 +104,6 @@ class UserLearningService {
   Future<List<String>> getLast7Emotions(String userId) async {
     final now = DateTime.now();
     final sevenDaysAgo = now.subtract(const Duration(days: 7));
-
     final emotions = <String>[];
 
     try {
@@ -128,7 +125,6 @@ class UserLearningService {
 
     return emotions;
   }
-
 
   /// Récupère les données santé du jour
   Future<Map<String, dynamic>?> getTodayHealthData(String userId) async {

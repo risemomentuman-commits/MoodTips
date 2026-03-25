@@ -47,15 +47,17 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
       final score = _irmScore?.score ?? 50;
       String emotion;
       if (score >= 80) {
-        emotion = 'heureux';
-      } else if (score >= 60) {
+        emotion = 'joyeux';
+      } else if (score >= 65) {
+        emotion = 'confiant';
+      } else if (score >= 50) {
         emotion = 'calme';
-      } else if (score >= 40) {
+      } else if (score >= 35) {
         emotion = 'fatigué';
       } else if (score >= 20) {
         emotion = 'stressé';
       } else {
-        emotion = 'anxieux';
+        emotion = 'épuisé';
       }
 
       final emotionId = _getEmotionId(emotion);
@@ -658,7 +660,7 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
-          height: MediaQuery.of(context).size.height * 0.8,
+          height: MediaQuery.of(context).size.height * 0.85,
           decoration: BoxDecoration(
             color: AppColors.backgroundPrimary,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -667,25 +669,51 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
             children: [
               Container(
                 padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.surfaceLight))),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: AppColors.surfaceLight)),
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Choisis ton émotion', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(icon: Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                    Text('Comment te sens-tu ?',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
                   ],
                 ),
               ),
               Expanded(
                 child: ListView(
-                  padding: EdgeInsets.all(20),
+                  padding: EdgeInsets.all(16),
                   children: [
-                    _buildEmotionTile('heureux', '😊'),
-                    _buildEmotionTile('calme', '😌'),
-                    _buildEmotionTile('fatigué', '😴'),
-                    _buildEmotionTile('anxieux', '😰'),
-                    _buildEmotionTile('triste', '😢'),
-                    _buildEmotionTile('stressé', '😤'),
+                    _buildEmotionCategory('Positif', [
+                      ('heureux',    '😊', 8),
+                      ('joyeux',     '😄', 20),
+                      ('confiant',   '💪', 21),
+                      ('énergique',  '⚡', 22),
+                      ('calme',      '😌', 7),
+                      ('détendu',    '🧘', 32),
+                      ('accompli',   '🏆', 31),
+                      ('reposé',     '😴', 32),
+                    ]),
+                    SizedBox(height: 12),
+                    _buildEmotionCategory('Neutre / Mitigé', [
+                      ('fatigué',    '😴', 3),
+                      ('épuisé',     '🪫', 30),
+                      ('sédentaire', '🛋️', 29),
+                      ('préoccupé',  '😟', 33),
+                      ('frustré',    '😤', 23),
+                      ('débordé',    '🤯', 6),
+                    ]),
+                    SizedBox(height: 12),
+                    _buildEmotionCategory('Difficile', [
+                      ('stressé',    '😰', 1),
+                      ('anxieux',    '😨', 2),
+                      ('triste',     '😢', 4),
+                      ('colère',     '😡', 5),
+                    ]),
                   ],
                 ),
               ),
@@ -696,33 +724,124 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
     );
   }
 
-  Widget _buildEmotionTile(String emotion, String emoji) {
-    return GestureDetector(
-      onTap: () {
-        setState(() => _selectedEmotion = emotion);
-        Navigator.pop(context);
-        HapticFeedback.mediumImpact();
-      },
-      child: Container(
-        margin: EdgeInsets.only(bottom: 12),
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _selectedEmotion == emotion ? AppColors.primary.withOpacity(0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: _selectedEmotion == emotion ? AppColors.primary : AppColors.surfaceLight,
-            width: 2,
+  Widget _buildEmotionCategory(String title, List<(String, String, int)> emotions) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textMedium,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
-        child: Row(
-          children: [
-            Text(emoji, style: TextStyle(fontSize: 32)),
-            SizedBox(width: 16),
-            Text(_capitalizeEmotion(emotion), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-          ],
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 2.8,
+          children: emotions.map((e) {
+            final emotion = e.$1;
+            final emoji   = e.$2;
+            final isSelected = _selectedEmotion == emotion;
+            return GestureDetector(
+              onTap: () {
+                setState(() => _selectedEmotion = emotion);
+                Navigator.pop(context);
+                HapticFeedback.mediumImpact();
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primary.withOpacity(0.12)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? AppColors.primary : AppColors.surfaceLight,
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Text(emoji, style: TextStyle(fontSize: 22)),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _capitalizeEmotion(emotion),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? AppColors.primary : AppColors.textDark,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
         ),
-      ),
+      ],
     );
+  }
+
+  int _getEmotionId(String emotion) {
+    const ids = {
+      'stress':      1,  'stressé':     1,
+      'anxiété':     2,  'anxieux':     2,
+      'fatigue':     3,  'fatigué':     3,
+      'tristesse':   4,  'triste':      4,
+      'colère':      5,
+      'débordé':     6,
+      'calme':       7,
+      'heureux':     8,
+      'joyeux':      20,
+      'confiant':    21,
+      'énergique':   22,
+      'frustré':     23,
+      'sédentaire':  29,
+      'épuisé':      30,
+      'accompli':    31,
+      'détendu':     32,  'reposé':     32,
+      'préoccupé':   33,
+    };
+    return ids[emotion] ?? 8;
+  }
+
+  String _getEmotionEmoji(String emotion) {
+    const emojis = {
+      'stress':      '😰', 'stressé':    '😰',
+      'anxiété':     '😨', 'anxieux':    '😨',
+      'fatigue':     '😴', 'fatigué':    '😴',
+      'tristesse':   '😢', 'triste':     '😢',
+      'colère':      '😡',
+      'débordé':     '🤯',
+      'calme':       '😌',
+      'heureux':     '😊',
+      'joyeux':      '😄',
+      'confiant':    '💪',
+      'énergique':   '⚡',
+      'frustré':     '😤',
+      'sédentaire':  '🛋️',
+      'épuisé':      '🪫',
+      'accompli':    '🏆',
+      'détendu':     '🧘', 'reposé':    '🧘',
+      'préoccupé':   '😟',
+    };
+    return emojis[emotion] ?? '😐';
+  }
+  String _capitalizeEmotion(String emotion) {
+    if (emotion.isEmpty) return emotion;
+    return emotion[0].toUpperCase() + emotion.substring(1);
   }
 
   Future<void> _validateEmotion() async {
@@ -731,7 +850,7 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
       if (userId == null) throw Exception('Non connecté');
 
       await Supabase.instance.client.from('mood_logs').insert({
-        'user_id': userId,
+        'user_id':    userId,
         'emotion_id': _getEmotionId(_selectedEmotion!),
         'created_at': DateTime.now().toIso8601String(),
       });
@@ -739,36 +858,20 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
       HapticFeedback.heavyImpact();
 
       if (mounted) {
-        Navigator.pushReplacementNamed(context, AppRoutes.tipsResult, arguments: _getEmotionId(_selectedEmotion!));
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.tipsResult,
+          arguments: _getEmotionId(_selectedEmotion!),
+        );
       }
     } catch (e) {
       print('❌ Erreur sauvegarde: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
+        );
       }
     }
-  }
-
-  int _getEmotionId(String emotion) {
-    Map<String, int> emotionIds = {
-      'heureux': 1, 'calme': 2, 'fatigué': 3,
-      'anxieux': 4, 'triste': 5, 'stressé': 6,
-    };
-    return emotionIds[emotion] ?? 1;
-  }
-
-  String _getEmotionEmoji(String emotion) {
-    Map<String, String> emojis = {
-      'heureux': '😊', 'calme': '😌', 'fatigué': '😴',
-      'anxieux': '😰', 'triste': '😢', 'stressé': '😤',
-      'débordé': '🤯', 'reposé': '😊', 'énergique': '⚡',
-      'serein': '😌',
-    };
-    return emojis[emotion] ?? '😐';
-  }
-
-  String _capitalizeEmotion(String emotion) {
-    return emotion[0].toUpperCase() + emotion.substring(1);
   }
 
   String _getMotivationalMessage(int score) {

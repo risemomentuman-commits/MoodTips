@@ -24,6 +24,8 @@ import '../pages/consent_page.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio_background/just_audio_background.dart'; 
 import 'services/subscription_service.dart';
+import 'services/cache_service.dart';
+import 'services/background_irm_service.dart';
 
 
 
@@ -42,7 +44,8 @@ void main() async {
    
   }
 
-  
+  await cacheService.initialize();
+
 
  
   AudioPreloader.preloadAudio();
@@ -69,6 +72,8 @@ void main() async {
       print('⚠️ JustAudioBackground init failed: $e');
     }
   }
+
+  BackgroundIrmService().runDailyCheck();
 
   await AppColors.loadTheme();
 
