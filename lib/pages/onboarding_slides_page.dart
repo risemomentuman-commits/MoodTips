@@ -35,7 +35,7 @@ class _OnboardingSlidesPageState extends State<OnboardingSlidesPage>
   }
 
   final List<Map<String, dynamic>> _slides = [
-    {'type': 'welcome'},
+    
     {'type': 'irm'},
     {'type': 'intelligent'},
     {'type': 'exercises'},

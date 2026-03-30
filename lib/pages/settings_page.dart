@@ -8,6 +8,9 @@ import '../services/google_tts_service.dart';
 import 'notifications_Settings_page.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../services/subscription_service.dart';
+import 'theme_selection_page.dart';
+
+
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -194,8 +197,27 @@ class _SettingsPageState extends State<SettingsPage> {
                   subtitle: 'Catégories préférées',
                   onTap: () => Navigator.pushNamed(context, AppRoutes.onboardingPreferences, arguments: {'fromSettings': true}),
                 ),
+                
 
                 SizedBox(height: 24),
+
+                //🎨 Thèmes personnalisés - MAINTENANT ACTIF
+                _buildSettingCard(
+                  context: context,
+                  icon: Icons.palette_outlined,
+                  iconColor: AppColors.primary,
+                  title: 'Thèmes personnalisés',
+                  subtitle: '${AppColors.currentThemeEmoji} ${AppColors.currentThemeName}',
+                  onTap: () async {
+                    final changed = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => ThemeSelectionPage()),
+                    );
+                    if (changed == true && mounted) {
+                      setState(() {});
+                    }
+                  },
+                ),           
 
                 // ── COMPTE ──
                 _buildSectionTitle('Compte'),

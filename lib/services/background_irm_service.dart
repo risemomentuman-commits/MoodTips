@@ -183,10 +183,10 @@ class BackgroundIrmService {
     }
   }
 
-  // ─── PLANIFIER LE CHECK QUOTIDIEN À 20H ───────────────────
+  
   Future<void> _scheduleNextCheck() async {
     final now = DateTime.now();
-    var target = DateTime(now.year, now.month, now.day, 20, 0);
+    var target = DateTime(now.year, now.month, now.day, 2, 0);
     if (target.isBefore(now)) {
       target = target.add(const Duration(days: 1));
     }

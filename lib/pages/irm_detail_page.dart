@@ -16,7 +16,7 @@ class IrmDetailPage extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Text(
-          'Mon Énergie Mentale',
+          'Mon IRM',
           style: TextStyle(color: Colors.white),
         ),
         leading: IconButton(

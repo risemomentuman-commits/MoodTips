@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/data/latest.dart' as tzData;
 import 'utils/app_routes.dart';
 import 'utils/app_colors.dart';
 import 'pages/auth_page.dart';
@@ -9,7 +9,6 @@ import 'pages/onboarding_slides_page.dart';
 import 'services/supabase_service.dart';
 import 'services/notification_service.dart';
 import 'services/audio_preloader.dart';
-import 'pages/welcome_page.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'pages/badges_page.dart';
 import 'services/dashboard_cache.dart'; 
@@ -26,6 +25,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'services/subscription_service.dart';
 import 'services/cache_service.dart';
 import 'services/background_irm_service.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 
 
@@ -72,6 +72,9 @@ void main() async {
       print('⚠️ JustAudioBackground init failed: $e');
     }
   }
+
+  // Initialiser les timezones
+  tzData.initializeTimeZones();
 
   BackgroundIrmService().runDailyCheck();
 

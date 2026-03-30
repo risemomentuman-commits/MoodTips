@@ -470,34 +470,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 8,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: IconButton(
-                                padding: EdgeInsets.zero,
-                                icon: Icon(Icons.bar_chart, color: AppColors.primary, size: 20),
-                                onPressed: () {
-                                  if (Navigator.canPop(context)) {
-                                    Navigator.pop(context);
-                                  } else {
-                                    Navigator.pushNamed(context, AppRoutes.dashboard);
-                                  }
-                                },
-                                tooltip: 'Mes statistiques',
-                              ),
-                            ),
-                            SizedBox(width: 8),
+                            
                             Container(
                               width: 40,
                               height: 40,
@@ -1130,7 +1103,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'L\'IA analyse tes données\npour détecter ton état émotionnel',
+                  'MoodTips analyse tes données\npour détecter ton état émotionnel',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,

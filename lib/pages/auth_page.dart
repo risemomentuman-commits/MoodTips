@@ -72,38 +72,48 @@ class _AuthPageState extends State<AuthPage> {
 
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId != null) {
+
+        // Vérifier si activation B2B en attente
         final profile = await Supabase.instance.client
-          .from('profiles')
-          .select('onboarding_completed')
-          .eq('id', userId)
-          .maybeSingle();
-        
+            .from('profiles')
+            .select('pending_org_id, is_b2b, onboarding_completed')
+            .eq('id', userId)
+            .maybeSingle();
+
+        final pendingOrgId   = profile?['pending_org_id'];
+        final isAlreadyB2B   = profile?['is_b2b'] ?? false;
         final onboardingCompleted = profile?['onboarding_completed'] ?? false;
-        
+
+        if (pendingOrgId != null && !isAlreadyB2B) {
+          await Supabase.instance.client.from('organization_members').upsert({
+            'organization_id': pendingOrgId,
+            'user_id':         userId,
+            'role':            'member',
+            'consent_given':   false,
+          }, onConflict: 'organization_id,user_id');
+          await SubscriptionService.activateB2BPremium(userId);
+          await Supabase.instance.client
+              .from('profiles')
+              .update({'pending_org_id': null})
+              .eq('id', userId);
+          print('✅ B2B activé au premier login');
+        }
+
         if (!mounted) return;
-        
+
         if (onboardingCompleted) {
-          // ══════════════════════════════════════════════════
-          // NOUVEAU : Vérifier si l'utilisateur a accepté
-          // la dernière version des CGU avant d'aller à moodcheck
-          // ══════════════════════════════════════════════════
           final hasCgu = await _consentService.hasCguAccepted();
-          
           if (!mounted) return;
-          
           if (hasCgu) {
-            // CGU à jour → moodcheck
             Navigator.pushReplacementNamed(context, AppRoutes.moodCheck);
           } else {
-            // CGU obsolètes ou jamais acceptées → page consent
             Navigator.pushReplacementNamed(context, AppRoutes.onboardingConsent);
           }
         } else {
           Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
         }
-      } else {
-        Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
       }
+
     } on AuthException catch (e) {
       if (!mounted) return;
       
@@ -355,7 +365,7 @@ class _AuthPageState extends State<AuthPage> {
                           : () {
                               Navigator.pushNamed(
                                 context,
-                                AppRoutes.createAccount,
+                                AppRoutes.accountType
                               );
                             },
                         style: ElevatedButton.styleFrom(

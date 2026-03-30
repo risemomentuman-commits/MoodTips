@@ -11,6 +11,8 @@ import '../models/user_profile.dart';
 import '../utils/badge_checker.dart';
 import 'theme_selection_page.dart';
 
+
+
 class ProfilePage extends StatefulWidget {
   @override
   _ProfilePageState createState() => _ProfilePageState();
@@ -659,6 +661,8 @@ class _ProfilePageState extends State<ProfilePage> {
                               const SizedBox(height: 24),
                             ],
 
+                    
+
                             ListTile(
                               leading: Icon(Icons.emoji_events, color: AppColors.primary),
                               title: const Text('Mes Badges'),
@@ -667,97 +671,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               onTap: () => Navigator.pushNamed(context, '/badges'),
                             ),
 
-                            // 🎨 Thèmes personnalisés - MAINTENANT ACTIF
-                            GestureDetector(
-                              onTap: () async {
-                                // Naviguer vers la sélection de thème
-                                final changed = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ThemeSelectionPage(),
-                                  ),
-                                );
-                                
-                                // Si le thème a changé, reconstruire tout l'écran
-                                if (changed == true && mounted) {
-                                  setState(() {
-                                    // Le setState va forcer la reconstruction avec les nouvelles couleurs
-                                  });
-                                }
-                              },
-                              child: Container(
-                                padding: EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: AppColors.primary.withOpacity(0.2),
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    // Icône palette
-                                    Container(
-                                      padding: EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Icon(
-                                        Icons.palette_outlined,
-                                        color: AppColors.primary,
-                                        size: 24,
-                                      ),
-                                    ),
-                                    SizedBox(width: 12),
-                                    
-                                    // Texte
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Thèmes personnalisés',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.textDark,
-                                            ),
-                                          ),
-                                          SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Text(
-                                                AppColors.currentThemeEmoji,
-                                                style: TextStyle(fontSize: 12),
-                                              ),
-                                              SizedBox(width: 4),
-                                              Text(
-                                                AppColors.currentThemeName,
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  color: AppColors.primary,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    
-                                    // Flèche
-                                    Icon(
-                                      Icons.chevron_right,
-                                      color: AppColors.textLight,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 24),
+                            
 
                             // Bouton Modifier mot de passe
                             SizedBox(

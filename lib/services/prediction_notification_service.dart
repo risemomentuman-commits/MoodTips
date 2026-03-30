@@ -43,7 +43,8 @@ class PredictionNotificationService {
 
     // Heure cible : aujourd'hui à 19h, ou demain si déjà passé
     final now = DateTime.now();
-    var target = DateTime(now.year, now.month, now.day, _notifHour, 0);
+    var target = DateTime(now.year, now.month, now.day, _notifHour, 0, 0, 0);
+    // Utiliser l'heure locale explicitement
     if (target.isBefore(now)) {
       target = target.add(const Duration(days: 1));
     }

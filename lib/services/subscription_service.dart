@@ -22,8 +22,11 @@ class SubscriptionService {
   static bool get trialExpired => _trialExpired;
 
   /// L'utilisateur a acces aux features premium
-  static bool get hasAccess => _betaMode || _isPremium || !_trialExpired;
+  static bool get hasAccess => _betaMode || _isPremium || _isB2B || !_trialExpired;
   static final ValueNotifier<bool> accessNotifier = ValueNotifier(false);
+
+  static bool _isB2B = false;
+  static bool get isB2B => _isB2B;
 
   /// Initialiser RevenueCat
   static Future<void> initialize() async {
@@ -60,6 +63,20 @@ class SubscriptionService {
       print('⚠️ RevenueCat init failed: $e');
       _isInitialized = true;
       await _checkTrialStatus();
+    }
+  }
+
+  static Future<void> activateB2BPremium(String userId) async {
+    try {
+      await Supabase.instance.client
+          .from('profiles')
+          .update({'is_b2b': true})
+          .eq('id', userId);
+      _isB2B = true;
+      accessNotifier.value = true;
+      print('✅ Premium B2B activé pour $userId');
+    } catch (e) {
+      print('❌ Erreur activation B2B: $e');
     }
   }
 

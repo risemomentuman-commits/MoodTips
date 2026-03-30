@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import '../pages/auth_page.dart';
 import '../pages/create_account_page.dart';
-import '../pages/welcome_page.dart';
 import '../pages/onboarding_slides_page.dart';
 import '../pages/onboarding_objectifs_page.dart';
 import '../pages/onboarding_preferences_page.dart';
 import '../pages/consent_page.dart';            
 import '../pages/mood_check_page.dart';
-import '../pages/dashboard_page.dart';
 import '../pages/tips_list_page.dart';
 import '../pages/tips_result_page.dart';
 import '../pages/tips_detail_page.dart';
@@ -23,19 +21,19 @@ import 'package:flutter/foundation.dart' show kIsWeb;  // ← DOIT être présen
 import '../pages/legal_notice_page.dart';
 import '../pages/irm_detail_page.dart';
 import '../pages/irm_history_page.dart';
+import '../pages/account_type_page.dart';
+import '../pages/enterprise_code_page.dart';
 
 class AppRoutes {
   static const String auth = '/auth';
   static const String onboarding = '/onboarding';
   static const String home = '/home';
   static const String createAccount = '/create-account';
-  static const String welcome = '/welcome';
   static const String onboardingSlides = '/onboarding-slides';
   static const String onboardingObjectifs = '/onboarding-objectifs';
   static const String onboardingPreferences = '/onboarding-preferences';
   static const String onboardingConsent = '/onboarding-consent';
   static const String moodCheck = '/mood-check';
-  static const String dashboard = '/dashboard';
   static const String tipsList = '/tips-list';
   static const String tipsResult = '/tips-result';
   static const String tipsDetail = '/tips-detail';
@@ -48,6 +46,8 @@ class AppRoutes {
   static const String sleep = '/sleep';
   static const String intelligentMode = '/intelligent-mode';
   static const String legalNotice = '/legal-notice';
+  static const String accountType    = '/account-type';
+  static const String enterpriseCode = '/enterprise-code';
 
   static Map<String, WidgetBuilder> getRoutes() {
     return {
@@ -55,14 +55,14 @@ class AppRoutes {
       onboarding: (context) => OnboardingSlidesPage(),  // ✅ CORRIGÉ
       home: (context) => MoodCheckPage(),              // ✅ CORRIGÉ
       createAccount: (context) => CreateAccountPage(),
-      welcome: (context) => WelcomePage(),
       onboardingSlides: (context) => OnboardingSlidesPage(),
       onboardingObjectifs: (context) => OnboardingObjectifsPage(),
       onboardingPreferences: (context) => OnboardingPreferencesPage(),
       onboardingConsent: (context) => ConsentPage(),
       notifications: (context) => NotificationsSettingsPage(),
       moodCheck: (context) => MoodCheckPage(),
-      dashboard: (context) => DashboardPage(),
+      accountType:    (context) => const AccountTypePage(),
+      enterpriseCode: (context) => const EnterpriseCodePage(),
       tipsList: (context) => TipsListPage(),
       sleep: (context) => SleepPage(),
       legalNotice: (context) => LegalNoticePage(),

@@ -58,6 +58,27 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
         await SubscriptionService.login(user.id);
+        // Récupérer les arguments
+        final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+        final accountType = args?['accountType'] as String?;
+        final organizationId = args?['organizationId'] as String?;
+
+        // Si compte entreprise → lier à l'org + activer Premium
+        if (accountType == 'enterprise' && organizationId != null) {
+          try {
+            // Stocker l'org en attente — sera activé au premier login
+            await Supabase.instance.client
+                .from('profiles')
+                .upsert({
+                  'id':             user.id,
+                  'pending_org_id': organizationId,
+                  'is_b2b':         false, // sera mis à true au premier login
+                }, onConflict: 'id');
+            print('✅ Org en attente enregistrée: $organizationId');
+          } catch (e) {
+            print('⚠️ Erreur: $e');
+          }
+        }
       }
 
       if (response.user != null) {
