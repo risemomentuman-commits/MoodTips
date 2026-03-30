@@ -99,6 +99,11 @@ class _AuthPageState extends State<AuthPage> {
           print('✅ B2B activé au premier login');
         }
 
+        // Afficher popup consentement B2B
+        if (mounted) {
+          await _showB2BConsentDialog(pendingOrgId);
+        }
+
         if (!mounted) return;
 
         if (onboardingCompleted) {
@@ -148,6 +153,117 @@ class _AuthPageState extends State<AuthPage> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _showB2BConsentDialog(String orgId) async {
+    final org = await Supabase.instance.client
+        .from('organizations')
+        .select('name')
+        .eq('id', orgId)
+        .maybeSingle();
+
+    final orgName = org?['name'] ?? 'votre entreprise';
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 60, height: 60,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(Icons.shield_outlined, color: AppColors.primary, size: 30),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Partage de données anonymisées',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textDark),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 12),
+            Text(
+              '$orgName utilise MoodTips pour suivre le bien-être collectif de son équipe.',
+              style: TextStyle(fontSize: 13, color: AppColors.textMedium, height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  _b2bConsentPoint('✅', 'Données 100% anonymisées'),
+                  _b2bConsentPoint('✅', 'Aucun score individuel visible par le manager'),
+                  _b2bConsentPoint('✅', 'Uniquement des statistiques d\'équipe'),
+                  _b2bConsentPoint('✅', 'Conforme RGPD'),
+                ],
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Tu peux refuser — tu utiliseras simplement MoodTips à titre personnel sans contribuer aux stats d\'équipe.',
+              style: TextStyle(fontSize: 11, color: AppColors.textLight, height: 1.4),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              // Refuser — consent_given reste false
+              Navigator.pop(context);
+            },
+            child: Text('Refuser', style: TextStyle(color: AppColors.textLight)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Accepter — mettre consent_given à true
+              final userId = Supabase.instance.client.auth.currentUser?.id;
+              if (userId != null) {
+                await Supabase.instance.client
+                    .from('organization_members')
+                    .update({
+                      'consent_given': true,
+                      'consent_date': DateTime.now().toIso8601String(),
+                    })
+                    .eq('user_id', userId)
+                    .eq('organization_id', orgId);
+              }
+              if (context.mounted) Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text('Accepter', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _b2bConsentPoint(String emoji, String text) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Text(emoji, style: TextStyle(fontSize: 13)),
+          SizedBox(width: 8),
+          Text(text, style: TextStyle(fontSize: 12, color: AppColors.textDark)),
+        ],
+      ),
+    );
   }
 
   @override
