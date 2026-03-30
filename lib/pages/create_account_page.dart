@@ -62,6 +62,17 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
         final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
         final accountType = args?['accountType'] as String?;
         final organizationId = args?['organizationId'] as String?;
+        // Marquer l'email comme utilisé dans la whitelist
+        final invitedId = args?['invitedId'] as String?;
+        if (invitedId != null) {
+          await Supabase.instance.client
+              .from('organization_invited_emails')
+              .update({
+                'used':    true,
+                'used_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', invitedId);
+        }
 
         // Si compte entreprise → lier à l'org + activer Premium
         if (accountType == 'enterprise' && organizationId != null) {
