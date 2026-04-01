@@ -119,12 +119,6 @@ class SubscriptionService {
   }
 
   /// Rafraichir le statut trial (appeler periodiquement)
-  static Future<void> refreshTrialStatus() async {
-    await _checkTrialStatus();
-    print('📅 Trial refresh: ${_trialDaysRemaining}j restants, premium: $_isPremium, access: $hasAccess');
-  }
-
-  /// Login RevenueCat
   static Future<void> login(String userId) async {
     if (!_isInitialized) return;
     try {
@@ -133,6 +127,20 @@ class SubscriptionService {
       }
       await checkPremiumStatus();
       await _checkTrialStatus();
+
+      // Vérifier le statut B2B depuis Supabase
+      try {
+        final profile = await Supabase.instance.client
+            .from('profiles')
+            .select('is_b2b')
+            .eq('id', userId)
+            .maybeSingle();
+        _isB2B = profile?['is_b2b'] ?? false;
+        if (_isB2B) print('✅ Utilisateur B2B détecté');
+      } catch (e) {
+        print('⚠️ Erreur vérification B2B: $e');
+      }
+
       print('✅ RevenueCat user: $userId');
     } catch (e) {
       print('⚠️ RevenueCat login error: $e');
