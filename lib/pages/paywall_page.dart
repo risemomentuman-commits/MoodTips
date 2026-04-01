@@ -102,20 +102,7 @@ class _PaywallPageState extends State<PaywallPage> {
                       _buildFeature(Icons.auto_awesome, 'Tips Premium', 'Acces a tous les exercices guides'),
                       _buildFeature(Icons.description, 'Export therapeute', 'Partage ton suivi avec un pro'),
                       SizedBox(height: 32),
-                      // Offre fondateurs
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.amber.withOpacity(0.4)),
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text('🔥', style: TextStyle(fontSize: 16)),
-                          SizedBox(width: 8),
-                          Text('Offre fondateurs · Places limitees', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.w600, fontSize: 13)),
-                        ]),
-                      ),
+                      
                       SizedBox(height: 24),
                       // Plans
                       _buildPlanCard(
