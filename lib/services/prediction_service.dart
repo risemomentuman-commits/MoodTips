@@ -51,7 +51,7 @@ class PredictionService {
     if (checkIns.length < 5) return null;
 
     final scores = checkIns
-        .map((ci) => (ci['irm_score'] as num?)?.toDouble())
+        .map((ci) => (ci['score'] as num?)?.toDouble())
         .whereType<double>()
         .toList();
 
@@ -147,15 +147,15 @@ class PredictionService {
     final tomorrow = targetDate.toIso8601String().substring(0, 10);
 
     final row = await _supabase
-        .from('daily_checkins')
-        .select('mental_load_events')
+        .from('irm_scores_timeline')
+        .select('mental_load_points')
         .eq('user_id', userId)
-        .eq('checkin_date', tomorrow)
+        .eq('date', tomorrow)
         .maybeSingle();
 
     if (row == null) return 0;
 
-    final events = (row['mental_load_events'] as int?) ?? 0;
+    final events = (row['mental_load_points'] as int?) ?? 0;
     if (events <= 3) return 0;
     if (events <= 6) return -5;
     if (events <= 9) return -12;
@@ -242,11 +242,11 @@ class PredictionService {
         .substring(0, 10);
 
     final response = await _supabase
-        .from('daily_checkins')
-        .select('checkin_date, irm_score, sleep_hours, mental_load_events')
+        .from('irm_scores_timeline')
+        .select('date, score, sleep_points, mental_load_points')
         .eq('user_id', userId)
-        .gte('checkin_date', since)
-        .order('checkin_date', ascending: true);
+        .gte('date', since)
+        .order('date', ascending: true);
 
     return List<Map<String, dynamic>>.from(response);
   }

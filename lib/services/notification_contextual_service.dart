@@ -87,7 +87,7 @@ class NotificationContextualService {
           hour:    7,
           minute:  30,
           triggerData: {
-            'sleep_hours':    sleepHours,
+            'sleep_points':    sleepHours,
             'morning_events': morningEvents,
           },
         );
@@ -133,16 +133,16 @@ class NotificationContextualService {
 
     final today = DateTime.now().toIso8601String().substring(0, 10);
     final row   = await _supabase
-        .from('daily_checkins')
-        .select('irm_score, mental_load_events')
+        .from('irm_scores_timeline')
+        .select('score, mental_load_points')
         .eq('user_id', userId)
-        .eq('checkin_date', today)
+        .eq('date', today)
         .maybeSingle();
 
     if (row == null) return;
 
-    final score    = (row['irm_score']          as num?)?.toDouble() ?? 100;
-    final pmEvents = (row['mental_load_events']  as int?)            ?? 0;
+    final score    = (row['score']          as num?)?.toDouble() ?? 100;
+    final pmEvents = (row['mental_load_points']  as int?)            ?? 0;
 
     if (score < _lowMorningScore && pmEvents >= _heavyLoadThreshold) {
       final canSend = await _canSendAlert(userId, AlertType.noon);

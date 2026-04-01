@@ -100,14 +100,14 @@ class NotificationService {
       // 3. Vérifier IRM rouge 2j de suite
       if (!shouldNotify) {
         final irmHistory = await supabase
-            .from('irm_scores')
-            .select('zone, date')
+            .from('irm_scores_timeline')
+            .select('score, date')
             .eq('user_id', userId)
             .order('date', ascending: false)
             .limit(2);
 
         if (irmHistory.length >= 2) {
-          final bothRed = irmHistory.every((e) => e['zone'] == 'danger');
+          final bothRed = irmHistory.every((e) => (e['score'] as num?)?.toDouble() != null && (e['score'] as num).toDouble() < 40);
           if (bothRed) {
             shouldNotify = true;
             title = 'MoodTips est là pour toi 🔴';

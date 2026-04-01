@@ -5,6 +5,7 @@ import '../utils/app_routes.dart';
 import '../services/consent_service.dart';
 import 'forgot_password_page.dart';
 import '../services/subscription_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthPage extends StatefulWidget {
   final String? message;
@@ -80,28 +81,51 @@ class _AuthPageState extends State<AuthPage> {
             .eq('id', userId)
             .maybeSingle();
 
-        final pendingOrgId   = profile?['pending_org_id'];
-        final isAlreadyB2B   = profile?['is_b2b'] ?? false;
+        final userMeta      = Supabase.instance.client.auth.currentUser?.userMetadata;
+        final prefs = await SharedPreferences.getInstance();
+        final pendingOrgId = profile?['pending_org_id'] as String? 
+            ?? prefs.getString('pending_org_id');
+        final isAlreadyB2B  = profile?['is_b2b'] ?? false;
         final onboardingCompleted = profile?['onboarding_completed'] ?? false;
 
         if (pendingOrgId != null && !isAlreadyB2B) {
-          await Supabase.instance.client.from('organization_members').upsert({
+          // Récupérer le team_id depuis l'invitation
+          final invitation = await Supabase.instance.client
+              .from('organization_invited_emails')
+              .select('team_id')
+              .eq('organization_id', pendingOrgId)
+              .eq('email', Supabase.instance.client.auth.currentUser?.email ?? '')
+              .maybeSingle();
+
+          final teamId = invitation?['team_id'] as String?;
+
+          final memberData = {
             'organization_id': pendingOrgId,
             'user_id':         userId,
             'role':            'member',
             'consent_given':   false,
-          }, onConflict: 'organization_id,user_id');
+            if (teamId != null) 'team_id': teamId,
+          };
+
+          await Supabase.instance.client
+              .from('organization_members')
+              .upsert(memberData, onConflict: 'organization_id,user_id');
+
           await SubscriptionService.activateB2BPremium(userId);
+          
           await Supabase.instance.client
               .from('profiles')
               .update({'pending_org_id': null})
               .eq('id', userId);
-          print('✅ B2B activé au premier login');
-        }
-
-        // Afficher popup consentement B2B
-        if (mounted) {
-          await _showB2BConsentDialog(pendingOrgId);
+          
+          print('✅ B2B activé au premier login - équipe: $teamId');
+          await prefs.remove('pending_org_id');
+          await prefs.remove('invited_id');
+          
+          // Afficher popup consentement B2B seulement si pendingOrgId existait
+          if (mounted) {
+            await _showB2BConsentDialog(pendingOrgId);
+          }
         }
 
         if (!mounted) return;

@@ -123,7 +123,7 @@ class DashboardDataService {
     final baseline = await _learning.getLatestBaseline();
 
     final snapshot = DashboardSnapshot(
-      todayScore:         (todayCheckin?['irm_score'] as num?)?.toDouble(),
+      todayScore:         (todayCheckin?['score'] as num?)?.toDouble(),
       tomorrowPrediction: prediction,
       baseline:           baseline,
       topPatterns:        patterns,
@@ -153,23 +153,23 @@ class DashboardDataService {
     if (userId == null) return const CheckinPage(items: [], hasMore: false);
 
     var query = _supabase
-        .from('daily_checkins')
+        .from('irm_scores_timeline')
         .select(
-          'checkin_date, irm_score, sleep_hours, activity_minutes, '
-          'mental_load_events, mood_raw, selected_actions',
+          'date, score, sleep_points, activity_points, '
+          'mental_load_points, score, sources_used',
         )
         .eq('user_id', userId)
-        .order('checkin_date', ascending: false);
+        .order('date', ascending: false);
 
     // Filtre beforeDate AVANT limit
     if (beforeDate != null) {
       final response = List<Map<String, dynamic>>.from(
         await _supabase
-            .from('daily_checkins')
-            .select('checkin_date, irm_score, sleep_hours, activity_minutes, mental_load_events, mood_raw, selected_actions')
+            .from('irm_scores_timeline')
+            .select('date, score, sleep_points, activity_points, mental_load_points, score, sources_used')
             .eq('user_id', userId)
-            .lte('checkin_date', beforeDate!)
-            .order('checkin_date', ascending: false)
+            .lte('date', beforeDate!)
+            .order('date', ascending: false)
             .limit(pageSize),
       );
     }
@@ -181,7 +181,7 @@ class DashboardDataService {
     return CheckinPage(
       items:      response,
       hasMore:    response.length >= pageSize,
-      nextCursor: response.isNotEmpty ? response.last['checkin_date'] as String? : null,
+      nextCursor: response.isNotEmpty ? response.last['date'] as String? : null,
     );
   }
 
@@ -201,10 +201,10 @@ class DashboardDataService {
   Future<Map<String, dynamic>?> _fetchTodayCheckin(String userId) async {
     final today = DateTime.now().toIso8601String().substring(0, 10);
     return await _supabase
-        .from('daily_checkins')
-        .select('irm_score, sleep_hours, mental_load_events')
+        .from('irm_scores_timeline')
+        .select('score, sleep_points, mental_load_points')
         .eq('user_id', userId)
-        .eq('checkin_date', today)
+        .eq('date', today)
         .maybeSingle();
   }
 
@@ -216,11 +216,11 @@ class DashboardDataService {
         .toIso8601String()
         .substring(0, 10);
     final response = await _supabase
-        .from('daily_checkins')
-        .select('checkin_date, irm_score')
+        .from('irm_scores_timeline')
+        .select('date, score')
         .eq('user_id', userId)
-        .gte('checkin_date', since)
-        .order('checkin_date', ascending: true);
+        .gte('date', since)
+        .order('date', ascending: true);
     return List<Map<String, dynamic>>.from(response);
   }
 

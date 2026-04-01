@@ -58,16 +58,24 @@ class PatternDetectionService {
         .substring(0, 10);
 
     final response = await _supabase
-        .from('daily_checkins')
+        .from('irm_scores_timeline')
         .select(
-          'checkin_date, irm_score, sleep_hours, sleep_quality, '
-          'mental_load_events, activity_minutes, selected_actions',
+          'date, score, sleep_points, activity_points, mental_load_points',
         )
         .eq('user_id', userId)
-        .gte('checkin_date', since)
-        .order('checkin_date', ascending: true);
+        .gte('date', since)
+        .order('date', ascending: true);
 
-    return List<Map<String, dynamic>>.from(response);
+        // Mapper vers l'ancien format pour compatibilité
+    return (response as List).map((row) => {
+      'date':        row['date'],
+      'score':           row['score'],
+      'sleep_points':         null,
+      'sleep_quality':       null,
+      'mental_load_points':  row['mental_load_points'],
+      'activity_points':    row['activity_points'],
+      'sources_used':    [],
+    }).toList();
   }
 
   // ─── 1. JOURS DIFFICILES RÉCURRENTS ───────────────────────
@@ -80,8 +88,8 @@ class PatternDetectionService {
     // Grouper par jour de la semaine (1=lundi … 7=dimanche)
     final Map<int, List<double>> scoresByWeekday = {};
     for (final ci in checkIns) {
-      final date  = DateTime.parse(ci['checkin_date'] as String);
-      final score = (ci['irm_score'] as num?)?.toDouble();
+      final date  = DateTime.parse(ci['date'] as String);
+      final score = (ci['score'] as num?)?.toDouble();
       if (score == null) continue;
       scoresByWeekday.putIfAbsent(date.weekday, () => []).add(score);
     }
@@ -94,7 +102,7 @@ class PatternDetectionService {
       final mean = _mean(scores);
       final globalMean = _mean(
         checkIns
-          .map((ci) => (ci['irm_score'] as num?)?.toDouble())
+          .map((ci) => (ci['score'] as num?)?.toDouble())
           .whereType<double>()
           .toList(),
       );
@@ -139,8 +147,8 @@ class PatternDetectionService {
     final yValues = <double>[]; // Score IRM
 
     for (final ci in checkIns) {
-      final sleep = (ci['sleep_hours'] as num?)?.toDouble();
-      final score = (ci['irm_score']   as num?)?.toDouble();
+      final sleep = (ci['sleep_points'] as num?)?.toDouble();
+      final score = (ci['score']   as num?)?.toDouble();
       if (sleep != null && score != null) {
         xValues.add(sleep);
         yValues.add(score);
@@ -170,7 +178,7 @@ class PatternDetectionService {
       metadata: {
         'pearson_r':           double.parse(r.toStringAsFixed(3)),
         'slope_pts_per_hour':  double.parse(slope.toStringAsFixed(2)),
-        'avg_sleep_hours':     double.parse(_mean(xValues).toStringAsFixed(1)),
+        'avg_sleep_points':     double.parse(_mean(xValues).toStringAsFixed(1)),
         'avg_irm_score':       double.parse(_mean(yValues).toStringAsFixed(1)),
       },
       lastSeenAt: DateTime.now(),
@@ -190,8 +198,8 @@ class PatternDetectionService {
     final allScores = <double>[];
 
     for (final ci in checkIns) {
-      final score   = (ci['irm_score'] as num?)?.toDouble();
-      final actions = ci['selected_actions'] as List<dynamic>? ?? [];
+      final score   = (ci['score'] as num?)?.toDouble();
+      final actions = ci['sources_used'] as List<dynamic>? ?? [];
       if (score == null) continue;
       allScores.add(score);
       for (final action in actions) {

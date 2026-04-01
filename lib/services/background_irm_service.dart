@@ -1,6 +1,6 @@
 // lib/services/background_irm_service.dart
 //
-// Calcule et sauvegarde le score IRM automatiquement chaque jour à 20h,
+// Calcule et sauvegarde le score IRM automatiquement chaque jour,
 // même si l'utilisateur n'a pas fait son check-in.
 //
 // Logique :

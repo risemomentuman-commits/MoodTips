@@ -137,12 +137,12 @@ class _IntelligentModeFlowPageState extends State<IntelligentModeFlowPage> {
           final today = now.toIso8601String().substring(0, 10);
           final manual = await Supabase.instance.client
               .from('irm_scores')
-              .select('manual_sleep_hours')
+              .select('manual_sleep_points')
               .eq('user_id', userId)
               .eq('date', today)
               .maybeSingle();
-          if (manual?['manual_sleep_hours'] != null) {
-            sleepHours = (manual!['manual_sleep_hours'] as num).toDouble();
+          if (manual?['manual_sleep_points'] != null) {
+            sleepHours = (manual!['manual_sleep_points'] as num).toDouble();
           }
         } catch (_) {}
         if (sleepHours == 0) sleepHours = 7.0;

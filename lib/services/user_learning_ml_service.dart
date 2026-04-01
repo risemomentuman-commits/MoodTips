@@ -154,14 +154,14 @@ class UserLearningService {
       return AdaptiveCoefficients.defaults;
     }
 
-    final scores = checkIns.map((ci) => (ci['irm_score'] as num).toDouble()).toList();
+    final scores = checkIns.map((ci) => (ci['score'] as num).toDouble()).toList();
 
     // Calculer corrélation de Pearson pour chaque facteur
-    final sleepCoeff    = _factorToCoeff(checkIns, 'sleep_hours',         scores);
-    final activityCoeff = _factorToCoeff(checkIns, 'activity_minutes',    scores);
-    final mentalCoeff   = _factorToCoeff(checkIns, 'mental_load_events',  scores,
+    final sleepCoeff    = _factorToCoeff(checkIns, 'sleep_points',         scores);
+    final activityCoeff = _factorToCoeff(checkIns, 'activity_points',    scores);
+    final mentalCoeff   = _factorToCoeff(checkIns, 'mental_load_points',  scores,
                                           invert: true); // Charge élevée → score bas
-    final moodCoeff     = _factorToCoeff(checkIns, 'mood_raw',            scores);
+    final moodCoeff     = _factorToCoeff(checkIns, 'score',            scores);
     final socialCoeff   = _factorToCoeff(checkIns, 'social_score',        scores);
 
     final coefficients = AdaptiveCoefficients(
@@ -313,15 +313,15 @@ class UserLearningService {
         .substring(0, 10);
 
     final response = await _supabase
-        .from('daily_checkins')
-        .select('irm_score')
+        .from('irm_scores_timeline')
+        .select('score')
         .eq('user_id', userId)
-        .gte('checkin_date', since)
-        .not('irm_score', 'is', null)
-        .order('checkin_date', ascending: true);
+        .gte('date', since)
+        .not('score', 'is', null)
+        .order('date', ascending: true);
 
     return (response as List)
-        .map((r) => (r['irm_score'] as num).toDouble())
+        .map((r) => (r['score'] as num).toDouble())
         .toList();
   }
 
@@ -335,15 +335,15 @@ class UserLearningService {
         .substring(0, 10);
 
     final response = await _supabase
-        .from('daily_checkins')
+        .from('irm_scores_timeline')
         .select(
-          'checkin_date, irm_score, sleep_hours, activity_minutes, '
-          'mental_load_events, mood_raw, social_score',
+          'date, score, sleep_points, activity_points, '
+          'mental_load_points, score, social_score',
         )
         .eq('user_id', userId)
-        .gte('checkin_date', since)
-        .not('irm_score', 'is', null)
-        .order('checkin_date', ascending: true);
+        .gte('date', since)
+        .not('score', 'is', null)
+        .order('date', ascending: true);
 
     return List<Map<String, dynamic>>.from(response);
   }

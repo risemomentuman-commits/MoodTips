@@ -765,7 +765,7 @@ class PrivacyPage extends StatelessWidget {
                             'desc': 'Micro-entrepreneur\n'
                                 'SIREN : 519482327\n'
                                 'Email : contact@moodtips.fr\n'
-                                'Adresse : 1015 Route de St Ours 73410 ENTRELACS',
+                                'Adresse : Route de St Ours 73410 ENTRELACS',
                           },
                         ],
                       ),

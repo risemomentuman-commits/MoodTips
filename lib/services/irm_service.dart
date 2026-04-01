@@ -485,7 +485,7 @@ class IRMService {
         // Mettre à jour la ligne existante
         await Supabase.instance.client
             .from('irm_scores')
-            .update({'manual_sleep_hours': hours})
+            .update({'manual_sleep_points': hours})
             .eq('user_id', userId)
             .eq('date', today);
       } else {
@@ -495,7 +495,7 @@ class IRMService {
             .insert({
               'user_id': userId,
               'date': today,
-              'manual_sleep_hours': hours,
+              'manual_sleep_points': hours,
             });
       }
       print('✅ Sommeil manuel sauvegardé: ${hours}h');
@@ -511,12 +511,12 @@ class IRMService {
       final today = DateTime.now().toIso8601String().substring(0, 10);
       final response = await Supabase.instance.client
           .from('irm_scores')
-          .select('manual_sleep_hours')
+          .select('manual_sleep_points')
           .eq('user_id', userId)
           .eq('date', today)
           .maybeSingle();
-      if (response?['manual_sleep_hours'] != null) {
-        return (response!['manual_sleep_hours'] as num).toDouble();
+      if (response?['manual_sleep_points'] != null) {
+        return (response!['manual_sleep_points'] as num).toDouble();
       }
       return null;
     } catch (e) {

@@ -54,7 +54,7 @@ class AssociationRule {
   final String               ruleKey;
   final String               description;
   final List<FactorCondition> conditions;
-  final String               outcomeMetric;  // 'irm_score'
+  final String               outcomeMetric;  // 'score'
   final double               outcomeDelta;   // Impact moyen sur le score
   final double               support;
   final double               confidence;
@@ -99,30 +99,30 @@ class MultiFactorCorrelationService {
       'key': 'short_sleep_high_load',
       'desc': 'Nuit courte + journée chargée',
       'conditions': [
-        {'factor': 'sleep_hours',         'operator': 'lt',  'threshold': 6.0},
-        {'factor': 'mental_load_events',  'operator': 'gt',  'threshold': 7.0},
+        {'factor': 'sleep_points',         'operator': 'lt',  'threshold': 6.0},
+        {'factor': 'mental_load_points',  'operator': 'gt',  'threshold': 7.0},
       ],
     },
     {
       'key': 'good_sleep_low_load',
       'desc': 'Bonne nuit + journée légère',
       'conditions': [
-        {'factor': 'sleep_hours',         'operator': 'gte', 'threshold': 7.5},
-        {'factor': 'mental_load_events',  'operator': 'lt',  'threshold': 4.0},
+        {'factor': 'sleep_points',         'operator': 'gte', 'threshold': 7.5},
+        {'factor': 'mental_load_points',  'operator': 'lt',  'threshold': 4.0},
       ],
     },
     {
       'key': 'morning_sport',
       'desc': 'Sport le matin (>30 min)',
       'conditions': [
-        {'factor': 'activity_minutes',    'operator': 'gt',  'threshold': 30.0},
+        {'factor': 'activity_points',    'operator': 'gt',  'threshold': 30.0},
       ],
     },
     {
       'key': 'very_short_sleep',
       'desc': 'Nuit très courte (<5h)',
       'conditions': [
-        {'factor': 'sleep_hours',         'operator': 'lt',  'threshold': 5.0},
+        {'factor': 'sleep_points',         'operator': 'lt',  'threshold': 5.0},
       ],
     },
     {
@@ -130,15 +130,15 @@ class MultiFactorCorrelationService {
       'desc': 'Bonnes interactions sociales + humeur positive',
       'conditions': [
         {'factor': 'social_score',        'operator': 'gte', 'threshold': 7.0},
-        {'factor': 'mood_raw',            'operator': 'gte', 'threshold': 7.0},
+        {'factor': 'score',            'operator': 'gte', 'threshold': 7.0},
       ],
     },
     {
       'key': 'overloaded_no_sport',
       'desc': 'Surcharge mentale sans activité physique',
       'conditions': [
-        {'factor': 'mental_load_events',  'operator': 'gt',  'threshold': 8.0},
-        {'factor': 'activity_minutes',    'operator': 'lt',  'threshold': 15.0},
+        {'factor': 'mental_load_points',  'operator': 'gt',  'threshold': 8.0},
+        {'factor': 'activity_points',    'operator': 'lt',  'threshold': 15.0},
       ],
     },
   ];
@@ -203,13 +203,13 @@ class MultiFactorCorrelationService {
 
     // Score moyen quand la condition est vraie vs false
     final scoresWhenTrue  = conditionTrue
-        .map((ci) => (ci['irm_score'] as num?)?.toDouble())
+        .map((ci) => (ci['score'] as num?)?.toDouble())
         .whereType<double>()
         .toList();
 
     final scoresWhenFalse = checkIns
         .where((ci) => !conditions.every((c) => c.evaluate(ci)))
-        .map((ci) => (ci['irm_score'] as num?)?.toDouble())
+        .map((ci) => (ci['score'] as num?)?.toDouble())
         .whereType<double>()
         .toList();
 
@@ -242,7 +242,7 @@ class MultiFactorCorrelationService {
       ruleKey:       ruleKey,
       description:   enrichedDesc,
       conditions:    conditions,
-      outcomeMetric: 'irm_score',
+      outcomeMetric: 'score',
       outcomeDelta:  double.parse(delta.toStringAsFixed(1)),
       support:       double.parse(support.toStringAsFixed(3)),
       confidence:    double.parse(confidence.toStringAsFixed(3)),
@@ -298,15 +298,15 @@ class MultiFactorCorrelationService {
         .substring(0, 10);
 
     final response = await _supabase
-        .from('daily_checkins')
+        .from('irm_scores_timeline')
         .select(
-          'checkin_date, irm_score, sleep_hours, activity_minutes, '
-          'mental_load_events, mood_raw, social_score',
+          'date, score, sleep_points, activity_points, '
+          'mental_load_points, score, social_score',
         )
         .eq('user_id', userId)
-        .gte('checkin_date', since)
-        .not('irm_score', 'is', null)
-        .order('checkin_date', ascending: true);
+        .gte('date', since)
+        .not('score', 'is', null)
+        .order('date', ascending: true);
 
     return List<Map<String, dynamic>>.from(response);
   }
