@@ -119,6 +119,12 @@ class SubscriptionService {
   }
 
   /// Rafraichir le statut trial (appeler periodiquement)
+  static Future<void> refreshTrialStatus() async {
+    await _checkTrialStatus();
+    print('📅 Trial refresh: ${_trialDaysRemaining}j restants, premium: $_isPremium, access: $hasAccess');
+  }
+
+  /// Rafraichir le statut trial (appeler periodiquement)
   static Future<void> login(String userId) async {
     if (!_isInitialized) return;
     try {
