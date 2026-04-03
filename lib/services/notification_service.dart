@@ -196,18 +196,11 @@ class NotificationService {
       hour: 8,
       minute: 0,
       title: 'MoodTips · Bilan matinal 🌅',
-      body: 'Ton analyse IRM du matin est disponible.',
+      body: 'Fais ton check-in quotidien pour que MoodTips apprenne à te connaître 💡',
     );
 
-    await _scheduleDaily(
-      id: 2,
-      hour: 20,
-      minute: 0,
-      title: 'MoodTips · Bilan du soir 🌙',
-      body: 'Comment s\'est passée ta journée ?',
-    );
 
-    print('✅ 2 notifications IRM programmées (8h et 20h)');
+    print('✅ 1 notification IRM programmée (8h)');
   }
 
   /// Alias pour compatibilité
