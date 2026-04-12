@@ -195,7 +195,7 @@ class NotificationService {
       id: 1,
       hour: 8,
       minute: 0,
-      title: 'MoodTips · Bilan matinal 🌅',
+      title: 'MoodTips · Fais ton check-in quotidien 🌅',
       body: 'Fais ton check-in quotidien pour que MoodTips apprenne à te connaître 💡',
     );
 

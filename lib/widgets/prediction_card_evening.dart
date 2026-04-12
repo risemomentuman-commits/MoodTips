@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../models/prediction.dart';
 import '../services/prediction_service.dart';
 import '../utils/app_colors.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PredictionCardEvening extends StatefulWidget {
   const PredictionCardEvening({super.key});
