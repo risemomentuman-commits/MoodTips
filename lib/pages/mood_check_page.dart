@@ -500,7 +500,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
 
                   // Bandeaux (toujours visibles)
                   _buildCheckinBanner(),
-                  TrialBanner(),
+                  if (!SubscriptionService.isB2B) TrialBanner(),
 
                   const PredictionCardEvening(),
 

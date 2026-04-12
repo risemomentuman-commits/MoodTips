@@ -107,7 +107,7 @@ class _IrmConsentToggleState extends State<IrmConsentToggle> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            title: const Text('Désactiver les recommandations IA ?'),
+            title: const Text('Désactiver les recommandations ?'),
             content: const Text(
               'En désactivant cette fonctionnalité :\n\n'
               '• Vos données algorithmiques (baselines, patterns, scores) '
@@ -256,7 +256,7 @@ class _IrmConsentToggleState extends State<IrmConsentToggle> {
           const SizedBox(height: 8),
           Text(
             _irmEnabled
-                ? 'Activé — Vos recommandations sont personnalisées par l\'IA'
+                ? 'Activé — Vos recommandations sont personnalisées par MoodTips'
                 : 'Désactivé — Vous utilisez les fonctionnalités de base',
             style: TextStyle(
               fontSize: 12,
