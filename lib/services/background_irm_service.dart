@@ -203,11 +203,13 @@ class BackgroundIrmService {
         playSound: false,
         enableVibration: false,
         showWhen: false,
+        visibility: NotificationVisibility.secret,
       ),
       iOS: DarwinNotificationDetails(
         presentAlert: false,
         presentBadge: false,
         presentSound: false,
+        interruptionLevel: InterruptionLevel.passive,
       ),
     );
 
