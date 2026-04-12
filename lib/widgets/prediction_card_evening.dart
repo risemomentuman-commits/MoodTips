@@ -46,15 +46,25 @@ class _PredictionCardEveningState extends State<PredictionCardEvening>
   }
 
   Future<void> _load() async {
-    // Ne charger qu'après 18h
     if (DateTime.now().hour < 18) {
       setState(() => _loading = false);
       return;
     }
     final p = await _service.getPredictionForTomorrow();
     if (mounted) {
+      // Vérifier si feedback déjà donné
+      bool alreadyFeedback = false;
+      if (p != null && p.id.isNotEmpty) {
+        final response = await Supabase.instance.client
+            .from('predictions')
+            .select('was_correct')
+            .eq('id', p.id)
+            .maybeSingle();
+        alreadyFeedback = response?['was_correct'] != null;
+      }
       setState(() {
         _prediction = p;
+        _feedbackGiven = alreadyFeedback;
         _loading = false;
       });
       if (p != null) _scoreCtrl.forward();
