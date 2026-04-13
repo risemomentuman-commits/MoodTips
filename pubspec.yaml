@@ -2,7 +2,7 @@ name: moodtips
 description: "Application bien-être avec tips émotionnels"
 publish_to: 'none'
 
-version: 1.2.3+26
+version: 1.2.4+27
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
