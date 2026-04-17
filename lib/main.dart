@@ -198,7 +198,7 @@ class _MyAppState extends State<MyApp> {
         final appLinks = AppLinks();
         
         // App fermée → lien initial
-        appLinks.getInitialAppLink().then((uri) {
+        appLinks.getInitialLink().then((uri) {
           if (uri != null) _handleDeepLink(uri);
         });
         
