@@ -1134,8 +1134,9 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                           HapticFeedback.mediumImpact();
                           Navigator.pushNamed(context, AppRoutes.intelligentMode).then((_) {
                             if (mounted) {
-                              setState(() {});
+                              _checkTodayCheckin();  // ← ajouter
                               _loadIRM();
+                              setState(() {});
                             }
                           });
                         },
