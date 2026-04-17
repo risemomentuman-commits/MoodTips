@@ -26,6 +26,7 @@ import 'services/subscription_service.dart';
 import 'services/cache_service.dart';
 import 'services/background_irm_service.dart';
 import 'package:timezone/timezone.dart' as tz;
+import 'package:app_links/app_links.dart';
 
 
 
@@ -192,6 +193,20 @@ class _MyAppState extends State<MyApp> {
     
     // Écouter les événements d'authentification
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      // Deep links Android
+      if (!kIsWeb) {
+        final appLinks = AppLinks();
+        
+        // App fermée → lien initial
+        appLinks.getInitialAppLink().then((uri) {
+          if (uri != null) _handleDeepLink(uri);
+        });
+        
+        // App en arrière-plan
+        appLinks.uriLinkStream.listen((uri) {
+          _handleDeepLink(uri);
+        });
+      }
       if (data.event == AuthChangeEvent.passwordRecovery) {
         // Navigation vers reset password
         Future.delayed(const Duration(milliseconds: 300), () {
@@ -200,6 +215,22 @@ class _MyAppState extends State<MyApp> {
             (route) => false,
           );
         });
+      }
+    });
+  }
+
+  void _handleDeepLink(Uri uri) {
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (uri.host == 'email-confirmed') {
+        widget.navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          '/email-confirmed',
+          (route) => false,
+        );
+      } else if (uri.host == 'reset-password') {
+        widget.navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const ResetPasswordPage()),
+          (route) => false,
+        );
       }
     });
   }

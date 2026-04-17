@@ -2,7 +2,7 @@ name: moodtips
 description: "Application bien-être avec tips émotionnels"
 publish_to: 'none'
 
-version: 1.2.4+27
+version: 1.2.5+28
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -38,6 +38,7 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0  
   shared_preferences: ^2.5.5
+  app_links: ^6.0.0
   
 
 dev_dependencies:
