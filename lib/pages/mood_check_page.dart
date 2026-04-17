@@ -502,7 +502,7 @@ class _MoodCheckPageState extends State<MoodCheckPage> {
                   _buildCheckinBanner(),
                   if (!SubscriptionService.isB2B) TrialBanner(),
 
-                  const PredictionCardEvening(),
+                  PredictionCardEvening(key: const ValueKey('prediction_card')),
 
                   // 🧠 IRM WIDGET
                   PremiumGate(

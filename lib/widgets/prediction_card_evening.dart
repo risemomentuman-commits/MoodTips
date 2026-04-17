@@ -248,7 +248,7 @@ class _PredictionCardEveningState extends State<PredictionCardEvening>
 
   Widget _feedbackBtn(String emoji, bool correct) {
     return GestureDetector(
-      onTap: () async {
+      onTap: _feedbackGiven ? null : () async {  // ← guard
         setState(() => _feedbackGiven = true);
         if (_prediction?.id != null && _prediction!.id.isNotEmpty) {
           await _service.submitFeedback(
@@ -260,7 +260,9 @@ class _PredictionCardEveningState extends State<PredictionCardEvening>
       child: Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: const Color(0xFFE8F0EB),
+          color: _feedbackGiven 
+              ? const Color(0xFFDDDDDD)   // ← grisé après tap
+              : const Color(0xFFE8F0EB),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(emoji, style: const TextStyle(fontSize: 16)),
