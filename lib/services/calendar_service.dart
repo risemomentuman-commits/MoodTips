@@ -46,7 +46,10 @@ class CalendarService {
           if (eventsResult.isSuccess && eventsResult.data != null) {
             for (final event in eventsResult.data!) {
               if (event.start == null) continue;
-              if (event.allDay == true) continue;
+              final isAllDay = event.allDay == true ||
+                (event.start != null && event.end != null &&
+                event.end!.difference(event.start!).inHours >= 20);
+              if (isAllDay) continue;
               if (event.end == null) continue;
 
               // Ignorer les événements déjà terminés
@@ -289,7 +292,9 @@ class CalendarService {
     'sieste', 'repos', 'récupération', 'recuperation',
     'acupuncture', 'réflexologie', 'reflexologie',
     'bain', 'detox', 'bien-être', 'bien être',
-    'coiffeur', 'coiffeuse', 'esthéticienne', 'manucure',
+    'coiffeur', 'coiffeuse', 'esthéticienne', 'manucure','vacances', 'congé', 'conge', 'férié', 'ferie',
+    'week-end', 'weekend', 'repos', 'retour',
+    'jour off', 'off',
     // Rappels positifs
     'choses positives', 'gratitude', 'positif', 'affirmation',
     'journal intime', 'bilan positif',
