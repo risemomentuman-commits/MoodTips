@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../services/subscription_service.dart';
 import '../utils/app_colors.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PaywallPage extends StatefulWidget {
   const PaywallPage({Key? key}) : super(key: key);
@@ -155,9 +156,30 @@ class _PaywallPageState extends State<PaywallPage> {
                       SizedBox(height: 8),
                       // Legal
                       Text(
-                        'L\'abonnement se renouvelle automatiquement. Tu peux annuler a tout moment dans les reglages de ton telephone.',
+                        'L\'abonnement se renouvelle automatiquement. Tu peux annuler à tout moment dans les réglages de ton téléphone.',
                         style: TextStyle(color: Colors.white38, fontSize: 10, height: 1.4),
                         textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: () => launchUrl(Uri.parse('https://moodtips.fr/cgu/')),
+                            child: Text(
+                              'Politique de confidentialité',
+                              style: TextStyle(color: Colors.white54, fontSize: 11, decoration: TextDecoration.underline),
+                            ),
+                          ),
+                          Text('  ·  ', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                          GestureDetector(
+                            onTap: () => launchUrl(Uri.parse('https://moodtips.fr/cgu')),
+                            child: Text(
+                              'Conditions d\'utilisation',
+                              style: TextStyle(color: Colors.white54, fontSize: 11, decoration: TextDecoration.underline),
+                            ),
+                          ),
+                        ],
                       ),
                       SizedBox(height: 24),
                     ]),

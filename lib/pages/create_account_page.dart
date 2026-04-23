@@ -62,7 +62,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       final response = await Supabase.instance.client.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        emailRedirectTo: 'https://risemomentuman-commits.github.io/MoodTips/#/auth',
+        emailRedirectTo: 'io.supabase.moodtips://email-confirmed',
         data: {
           'pending_org_id': organizationId ?? '',
           'account_type':   accountType   ?? '',
