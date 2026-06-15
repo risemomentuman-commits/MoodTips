@@ -30,9 +30,15 @@ class HealthService {
   /// Demande permissions selon la plateforme
   static Future<bool> requestAuthorization() async {
     try {
-      // ✅ Health Connect sur Android, Apple Health sur iOS
       if (!kIsWeb) {
-        bool authorized = await _health.requestAuthorization(_types);
+        // ✅ AJOUT : permissions explicites READ
+        final permissions = _types.map((_) => HealthDataAccess.READ).toList();
+        
+        bool authorized = await _health.requestAuthorization(
+          _types,
+          permissions: permissions, // ← manquait
+        );
+        
         if (authorized) {
           final source = defaultTargetPlatform == TargetPlatform.iOS 
               ? 'apple_health' 
@@ -122,10 +128,10 @@ class HealthService {
 
   /// Récupère toutes les données (appelé par l'algo)
   static Future<HealthContextData> getAllHealthData() async {
-    // ✅ Toujours demander/vérifier l'autorisation avant de lire
     if (!kIsWeb) {
       try {
-        await _health.requestAuthorization(_types);
+        final permissions = _types.map((_) => HealthDataAccess.READ).toList();
+        await _health.requestAuthorization(_types, permissions: permissions);
       } catch (e) {
         print('⚠️ Autorisation Health: $e');
       }

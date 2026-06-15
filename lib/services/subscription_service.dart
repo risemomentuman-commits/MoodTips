@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 
 class SubscriptionService {
   static const String _iosApiKey = 'appl_UXtDvyjTuWMjXbkEOUnjZoxcgkF';
@@ -200,16 +201,26 @@ class SubscriptionService {
   static Future<bool> purchasePackage(Package package) async {
     if (!_isInitialized) return false;
     try {
-      final result = await Purchases.purchasePackage(package);
+      final result = await Purchases.purchasePackage(package)
+          .timeout(
+            const Duration(seconds: 60),
+            onTimeout: () => throw TimeoutException('Achat timeout'),
+          );
       _updatePremiumStatus(result.customerInfo);
       return _isPremium;
+    } on TimeoutException {
+      print('⏱ Achat timeout après 60s');
+      return false;
     } on PlatformException catch (e) {
       final code = PurchasesErrorHelper.getErrorCode(e);
       if (code == PurchasesErrorCode.purchaseCancelledError) {
-        print('🚫 Achat annule');
+        print('🚫 Achat annulé');
       } else {
         print('❌ Erreur achat: $e');
       }
+      return false;
+    } catch (e) {
+      print('❌ Erreur inattendue achat: $e');
       return false;
     }
   }

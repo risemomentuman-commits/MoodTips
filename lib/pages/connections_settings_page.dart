@@ -77,6 +77,23 @@ class _ConnectionsSettingsPageState extends State<ConnectionsSettingsPage> {
               message = success 
                   ? '✅ $name connecté' 
                   : '❌ Permission refusée';
+              
+              // ✅ AJOUT : sauvegarder dans Supabase comme le calendrier
+              if (success) {
+                final userId = Supabase.instance.client.auth.currentUser?.id;
+                if (userId != null) {
+                  await Supabase.instance.client.from('user_data_sources').upsert(
+                    {
+                      'user_id': userId,
+                      'source_type': sourceType,
+                      'is_active': true,
+                      'last_sync_at': DateTime.now().toIso8601String(),
+                      'updated_at': DateTime.now().toIso8601String(),
+                    },
+                    onConflict: 'user_id,source_type',
+                  );
+                }
+              }
             }
             break;
             
